@@ -9,8 +9,36 @@ export type LeadEvent = Database['public']['Tables']['lead_events']['Row']
 export type LeadEventInsert = Database['public']['Tables']['lead_events']['Insert']
 
 // Application-level enums and types
-export const LEAD_STATUSES = ['new', 'contacted', 'customer', 'lost'] as const
+// Full status list: 4 original + 9 from Zoho = 13 total
+export const LEAD_STATUSES = [
+  // Original statuses
+  'new',
+  'contacted',
+  'customer',
+  'lost',
+  // Zoho statuses
+  'signed',
+  'meeting_set',
+  'pending_agreement',
+  'message_sent',
+  'no_answer',
+  'not_contacted',
+  'not_relevant',
+  'closed_elsewhere',
+  'future_interest',
+] as const
 export type LeadStatus = typeof LEAD_STATUSES[number]
+
+// Pipeline stages for grouping statuses
+export const PIPELINE_STAGES = {
+  follow_up: ['new', 'no_answer', 'not_contacted'],
+  warm: ['contacted', 'message_sent'],
+  hot: ['meeting_set', 'pending_agreement'],
+  signed: ['customer', 'signed'],
+  lost: ['lost', 'not_relevant', 'closed_elsewhere'],
+  future: ['future_interest'],
+} as const
+export type PipelineStage = keyof typeof PIPELINE_STAGES
 
 export const EVENT_TYPES = [
   'created',
@@ -29,34 +57,113 @@ export const STATUS_CONFIG: Record<LeadStatus, {
   bgColor: string
   borderColor: string
   cssClass: string
+  pipelineStage: PipelineStage
 }> = {
+  // === Original statuses ===
   new: {
     label: 'חדש',
     color: 'text-[#0073EA]',
     bgColor: 'bg-[#CCE5FF]',
     borderColor: 'border-transparent',
-    cssClass: 'status-new'
+    cssClass: 'status-new',
+    pipelineStage: 'follow_up'
   },
   contacted: {
     label: 'נוצר קשר',
     color: 'text-[#D17A00]',
     bgColor: 'bg-[#FFF0D6]',
     borderColor: 'border-transparent',
-    cssClass: 'status-contacted'
+    cssClass: 'status-contacted',
+    pipelineStage: 'warm'
   },
   customer: {
     label: 'לקוח',
     color: 'text-[#00854D]',
     bgColor: 'bg-[#D4F4DD]',
     borderColor: 'border-transparent',
-    cssClass: 'status-customer'
+    cssClass: 'status-customer',
+    pipelineStage: 'signed'
   },
   lost: {
     label: 'אבוד',
     color: 'text-[#D83A52]',
     bgColor: 'bg-[#FFD6D9]',
     borderColor: 'border-transparent',
-    cssClass: 'status-lost'
+    cssClass: 'status-lost',
+    pipelineStage: 'lost'
+  },
+  // === Zoho statuses ===
+  signed: {
+    label: 'חתם על הסכם התקשרות',
+    color: 'text-[#00854D]',
+    bgColor: 'bg-[#D4F4DD]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-signed',
+    pipelineStage: 'signed'
+  },
+  meeting_set: {
+    label: 'נקבעה שיחה',
+    color: 'text-[#D93D42]',
+    bgColor: 'bg-[#FFEBE6]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-meeting-set',
+    pipelineStage: 'hot'
+  },
+  pending_agreement: {
+    label: 'בהמתנה להסכם',
+    color: 'text-[#D93D42]',
+    bgColor: 'bg-[#FFF5F0]',
+    borderColor: 'border-[#D93D4233]',
+    cssClass: 'status-pending-agreement',
+    pipelineStage: 'hot'
+  },
+  message_sent: {
+    label: 'נשלחה הודעה',
+    color: 'text-[#D17A00]',
+    bgColor: 'bg-[#FFF0D6]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-message-sent',
+    pipelineStage: 'warm'
+  },
+  no_answer: {
+    label: 'אין מענה',
+    color: 'text-[#676879]',
+    bgColor: 'bg-[#F5F6F8]',
+    borderColor: 'border-[#E6E9EF]',
+    cssClass: 'status-no-answer',
+    pipelineStage: 'follow_up'
+  },
+  not_contacted: {
+    label: 'טרם יצרנו קשר',
+    color: 'text-[#0073EA]',
+    bgColor: 'bg-[#CCE5FF]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-not-contacted',
+    pipelineStage: 'follow_up'
+  },
+  not_relevant: {
+    label: 'לא רלוונטי',
+    color: 'text-[#D83A52]',
+    bgColor: 'bg-[#FFD6D9]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-not-relevant',
+    pipelineStage: 'lost'
+  },
+  closed_elsewhere: {
+    label: 'סגר במקום אחר',
+    color: 'text-[#D83A52]',
+    bgColor: 'bg-[#FFD6D9]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-closed-elsewhere',
+    pipelineStage: 'lost'
+  },
+  future_interest: {
+    label: 'מעוניין בעתיד',
+    color: 'text-[#00A0B0]',
+    bgColor: 'bg-[#D4F4F7]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-future-interest',
+    pipelineStage: 'future'
   }
 }
 
@@ -77,7 +184,9 @@ export const EVENT_CONFIG: Record<EventType, {
 
 // Custom fields structure (flexible JSON)
 export interface CustomFields {
-  [key: string]: string | number | boolean | null
+  zoho_id?: string
+  zoho_notes?: string
+  [key: string]: string | number | boolean | null | undefined
 }
 
 // Lead with events for detail views
@@ -139,10 +248,20 @@ export interface LeadFilterOptions {
 // KPI types
 export interface LeadKPIs {
   totalLeads: number
+  // Original status counts (for backward compatibility)
   newLeads: number
   contactedLeads: number
   customers: number
   lostLeads: number
+  // Pipeline stage counts (new)
+  followUpLeads: number    // new, no_answer, not_contacted
+  warmLeads: number        // contacted, message_sent
+  hotLeads: number         // meeting_set, pending_agreement
+  signedLeads: number      // customer, signed
+  futureLeads: number      // future_interest
+  // All lost statuses: lost, not_relevant, closed_elsewhere
+  allLostLeads: number
+  // Rates
   conversionRate: number
   totalPipelineValue: number
   weightedPipelineValue: number
@@ -158,10 +277,21 @@ export interface UTMPerformance {
 
 export interface TimeSeriesData {
   date: string
+  // Original statuses
   new: number
   contacted: number
   customer: number
   lost: number
+  // Zoho statuses
+  signed: number
+  meeting_set: number
+  pending_agreement: number
+  message_sent: number
+  no_answer: number
+  not_contacted: number
+  not_relevant: number
+  closed_elsewhere: number
+  future_interest: number
 }
 
 export interface ConversionFunnelItem {

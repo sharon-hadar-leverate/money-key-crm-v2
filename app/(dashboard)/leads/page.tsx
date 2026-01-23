@@ -3,9 +3,16 @@ import { LeadsTable } from '@/components/leads/leads-table'
 import { getLeads } from '@/actions/leads'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
+import type { PipelineStage } from '@/types/leads'
 
-export default async function LeadsPage() {
+interface LeadsPageProps {
+  searchParams: Promise<{ stage?: string }>
+}
+
+export default async function LeadsPage({ searchParams }: LeadsPageProps) {
+  const params = await searchParams
   const { data: leads, count } = await getLeads({ limit: 100 })
+  const initialStage = params.stage as PipelineStage | undefined
 
   return (
     <>
@@ -21,7 +28,7 @@ export default async function LeadsPage() {
             ליד חדש
           </Link>
         </div>
-        <LeadsTable leads={leads} totalCount={count} />
+        <LeadsTable leads={leads} totalCount={count} initialStage={initialStage} />
       </div>
     </>
   )

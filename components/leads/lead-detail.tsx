@@ -4,14 +4,67 @@ import { useState } from 'react'
 import { StatusBadge } from './status-badge'
 import { Timeline } from './timeline'
 import { formatDate, formatCurrency, getInitials } from '@/lib/utils'
-import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent } from 'lucide-react'
+import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent, MessageSquare, Copy, Check } from 'lucide-react'
 import { updateLead, updateLeadStatus } from '@/actions/leads'
 import { toast } from 'sonner'
-import type { Lead, LeadEvent, LeadStatus } from '@/types/leads'
+import { STATUS_CONFIG } from '@/types/leads'
+import { getStatusPipelineStage, PIPELINE_LABELS, getPipelineStageIndex } from '@/lib/status-utils'
+import { cn } from '@/lib/utils'
+import type { Lead, LeadEvent, LeadStatus, PipelineStage } from '@/types/leads'
 
 interface LeadDetailProps {
   lead: Lead
   events: LeadEvent[]
+}
+
+// Pipeline Progress visual indicator
+const PROGRESS_STAGES: PipelineStage[] = ['follow_up', 'warm', 'hot', 'signed']
+
+function PipelineProgress({ currentStatus }: { currentStatus: string | null }) {
+  const currentStage = getStatusPipelineStage(currentStatus)
+  const currentIndex = getPipelineStageIndex(currentStage)
+
+  // Don't show progress for lost/future stages
+  if (currentStage === 'lost' || currentStage === 'future') return null
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center gap-1">
+        {PROGRESS_STAGES.map((stage, i) => (
+          <div key={stage} className="flex-1 flex items-center gap-1">
+            <div
+              className={cn(
+                "h-1.5 flex-1 rounded-full transition-colors",
+                i <= currentIndex ? "bg-[#00A0B0]" : "bg-[#E6E9EF]"
+              )}
+            />
+            {i < PROGRESS_STAGES.length - 1 && (
+              <div className={cn(
+                "w-1.5 h-1.5 rounded-full shrink-0",
+                i < currentIndex ? "bg-[#00A0B0]" : "bg-[#E6E9EF]"
+              )} />
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Stage labels */}
+      <div className="flex items-center gap-1 mt-1.5">
+        {PROGRESS_STAGES.map((stage, i) => (
+          <div key={stage} className="flex-1 flex items-center gap-1">
+            <span className={cn(
+              "flex-1 text-[10px] text-center",
+              i <= currentIndex ? "text-[#00A0B0] font-medium" : "text-[#9B9BAD]"
+            )}>
+              {PIPELINE_LABELS[stage]}
+            </span>
+            {i < PROGRESS_STAGES.length - 1 && (
+              <div className="w-1.5 shrink-0" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function LeadDetail({ lead, events }: LeadDetailProps) {
@@ -51,12 +104,29 @@ export function LeadDetail({ lead, events }: LeadDetailProps) {
     }
   }
 
-  const statusButtons: { status: LeadStatus; label: string }[] = [
-    { status: 'new', label: 'חדש' },
-    { status: 'contacted', label: 'נוצר קשר' },
-    { status: 'customer', label: 'לקוח' },
-    { status: 'lost', label: 'אבוד' },
-  ]
+  const copyPhone = () => {
+    if (lead.phone) {
+      navigator.clipboard.writeText(lead.phone)
+      toast.success('מספר טלפון הועתק')
+    }
+  }
+
+  const copyEmail = () => {
+    if (lead.email) {
+      navigator.clipboard.writeText(lead.email)
+      toast.success('אימייל הועתק')
+    }
+  }
+
+  // Group statuses by pipeline stage for organized display
+  const statusesByStage: Record<PipelineStage, LeadStatus[]> = {
+    follow_up: ['new', 'not_contacted', 'no_answer'],
+    warm: ['contacted', 'message_sent'],
+    hot: ['meeting_set', 'pending_agreement'],
+    signed: ['customer', 'signed'],
+    lost: ['lost', 'not_relevant', 'closed_elsewhere'],
+    future: ['future_interest'],
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -73,11 +143,15 @@ export function LeadDetail({ lead, events }: LeadDetailProps) {
                 <div className="w-20 h-20 rounded-xl bg-[#00A0B0] flex items-center justify-center text-2xl font-bold text-white shadow-lg border-4 border-white">
                   {getInitials(lead.name)}
                 </div>
-                <div className="pb-1">
+                <div className="pb-1 flex-1">
                   <h1 className="text-xl font-bold text-[#323338]">{lead.name}</h1>
-                  <div className="mt-2">
+                  <div className="mt-2 flex items-center gap-3">
                     <StatusBadge status={lead.status} />
+                    <span className="text-xs text-[#9B9BAD]">
+                      {PIPELINE_LABELS[getStatusPipelineStage(lead.status)]}
+                    </span>
                   </div>
+                  <PipelineProgress currentStatus={lead.status} />
                 </div>
               </div>
               <button
@@ -102,21 +176,27 @@ export function LeadDetail({ lead, events }: LeadDetailProps) {
               </button>
             </div>
 
-            {/* Status Actions */}
-            <div className="flex flex-wrap gap-2 mt-6 pt-6 border-t border-[#E6E9EF]">
-              {statusButtons.map((btn) => (
-                <button
-                  key={btn.status}
-                  onClick={() => handleStatusChange(btn.status)}
-                  disabled={lead.status === btn.status}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    lead.status === btn.status
-                      ? 'bg-[#E5F6F7] text-[#00A0B0] border border-[#00A0B0]'
-                      : 'bg-[#F5F6F8] text-[#676879] border border-[#E6E9EF] hover:text-[#323338] hover:border-[#00A0B0]'
-                  }`}
-                >
-                  {btn.label}
-                </button>
+            {/* Status Actions - Grouped by Pipeline Stage */}
+            <div className="mt-6 pt-6 border-t border-[#E6E9EF] space-y-3">
+              {(Object.keys(statusesByStage) as PipelineStage[]).map((stage) => (
+                <div key={stage} className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-[#9B9BAD] w-16 shrink-0">{PIPELINE_LABELS[stage]}:</span>
+                  {statusesByStage[stage].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => handleStatusChange(status)}
+                      disabled={lead.status === status}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        lead.status === status
+                          ? `${STATUS_CONFIG[status].bgColor} ${STATUS_CONFIG[status].color} border ${STATUS_CONFIG[status].borderColor || 'border-current'}`
+                          : 'bg-[#F5F6F8] text-[#676879] border border-[#E6E9EF] hover:text-[#323338] hover:border-[#00A0B0]'
+                      }`}
+                    >
+                      {STATUS_CONFIG[status].label}
+                      {lead.status === status && <Check className="h-3 w-3" />}
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
           </div>
@@ -162,17 +242,35 @@ export function LeadDetail({ lead, events }: LeadDetailProps) {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors">
+              <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors group">
                 <div className="p-2 rounded-lg bg-white">
                   <Mail className="h-4 w-4 text-[#676879]" />
                 </div>
-                <span className="text-[#323338]">{lead.email || <span className="text-[#C4C4C4]">לא צוין</span>}</span>
+                <span className="text-[#323338] flex-1">{lead.email || <span className="text-[#C4C4C4]">לא צוין</span>}</span>
+                {lead.email && (
+                  <button
+                    onClick={copyEmail}
+                    className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
+                    title="העתק אימייל"
+                  >
+                    <Copy className="h-4 w-4 text-[#676879]" />
+                  </button>
+                )}
               </div>
-              <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors">
+              <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors group">
                 <div className="p-2 rounded-lg bg-white">
                   <Phone className="h-4 w-4 text-[#676879]" />
                 </div>
-                <span className="text-[#323338] tabular-nums" dir="ltr">{lead.phone || <span className="text-[#C4C4C4]">לא צוין</span>}</span>
+                <span className="text-[#323338] tabular-nums flex-1" dir="ltr">{lead.phone || <span className="text-[#C4C4C4]">לא צוין</span>}</span>
+                {lead.phone && (
+                  <button
+                    onClick={copyPhone}
+                    className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
+                    title="העתק טלפון"
+                  >
+                    <Copy className="h-4 w-4 text-[#676879]" />
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors">
                 <div className="p-2 rounded-lg bg-white">
@@ -239,6 +337,30 @@ export function LeadDetail({ lead, events }: LeadDetailProps) {
             </div>
           )}
         </div>
+
+        {/* Zoho Notes */}
+        {(() => {
+          const customFields = lead.custom_fields as Record<string, unknown> | null
+          const zohoNotes = customFields?.zoho_notes as string | undefined
+          if (!zohoNotes) return null
+          return (
+            <div className="monday-card p-5">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 rounded-lg bg-[#FDEBDC]">
+                  <MessageSquare className="h-4 w-4 text-[#E07239]" />
+                </div>
+                <h3 className="text-sm font-semibold text-[#323338]">הערות מכירה</h3>
+                <span className="text-xs text-[#9B9BAD] bg-[#F5F6F8] px-2 py-0.5 rounded">Zoho</span>
+              </div>
+
+              <div className="p-4 rounded-lg bg-[#FDEBDC]/20 border border-[#FDEBDC]">
+                <p className="text-sm text-[#323338] whitespace-pre-wrap leading-relaxed">
+                  {zohoNotes}
+                </p>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* UTM Info */}
         {(lead.utm_source || lead.utm_campaign) && (

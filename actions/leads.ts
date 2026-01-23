@@ -30,7 +30,7 @@ export async function createLead(input: CreateLeadInput): Promise<{
     const userEmail = await getCurrentUserEmail()
 
     const { data, error } = await supabase
-      .from('leads')
+      .from(Tables.leads)
       .insert({
         name: input.name,
         email: input.email,
@@ -60,7 +60,7 @@ export async function createLead(input: CreateLeadInput): Promise<{
     if (error) throw error
 
     // Log creation event
-    await supabase.from('lead_events').insert({
+    await supabase.from(Tables.lead_events).insert({
       lead_id: data.id,
       event_type: 'created',
       user_email: userEmail,
@@ -199,7 +199,7 @@ export async function updateLead(input: UpdateLeadInput): Promise<{
 
     // Get current lead for comparison
     const { data: currentLead } = await supabase
-      .from('leads')
+      .from(Tables.leads)
       .select('*')
       .eq('id', input.id)
       .single()
@@ -243,7 +243,7 @@ export async function updateLead(input: UpdateLeadInput): Promise<{
 
     // Perform update
     const { data, error } = await supabase
-      .from('leads')
+      .from(Tables.leads)
       .update(updates)
       .eq('id', input.id)
       .select()
@@ -253,7 +253,7 @@ export async function updateLead(input: UpdateLeadInput): Promise<{
 
     // Log field-level changes
     for (const change of changedFields) {
-      await supabase.from('lead_events').insert({
+      await supabase.from(Tables.lead_events).insert({
         lead_id: input.id,
         event_type: change.field === 'status' ? 'status_changed' : 'field_changed',
         field_name: change.field,
@@ -288,7 +288,7 @@ export async function updateLeadStatus(
 
     // Get current status
     const { data: lead } = await supabase
-      .from('leads')
+      .from(Tables.leads)
       .select('status')
       .eq('id', id)
       .single()
@@ -301,7 +301,7 @@ export async function updateLeadStatus(
 
     // Update status
     const { error: updateError } = await supabase
-      .from('leads')
+      .from(Tables.leads)
       .update({
         status: newStatus,
         is_new: newStatus === 'new',
@@ -311,7 +311,7 @@ export async function updateLeadStatus(
     if (updateError) throw updateError
 
     // Log status change event
-    await supabase.from('lead_events').insert({
+    await supabase.from(Tables.lead_events).insert({
       lead_id: id,
       event_type: 'status_changed',
       field_name: 'status',
@@ -344,7 +344,7 @@ export async function softDeleteLead(id: string): Promise<{
     const userEmail = await getCurrentUserEmail()
 
     const { error } = await supabase
-      .from('leads')
+      .from(Tables.leads)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
       .is('deleted_at', null)
@@ -352,7 +352,7 @@ export async function softDeleteLead(id: string): Promise<{
     if (error) throw error
 
     // Log delete event
-    await supabase.from('lead_events').insert({
+    await supabase.from(Tables.lead_events).insert({
       lead_id: id,
       event_type: 'deleted',
       user_email: userEmail,
@@ -380,14 +380,14 @@ export async function restoreLead(id: string): Promise<{
     const userEmail = await getCurrentUserEmail()
 
     const { error } = await supabase
-      .from('leads')
+      .from(Tables.leads)
       .update({ deleted_at: null })
       .eq('id', id)
 
     if (error) throw error
 
     // Log restore event
-    await supabase.from('lead_events').insert({
+    await supabase.from(Tables.lead_events).insert({
       lead_id: id,
       event_type: 'restored',
       user_email: userEmail,
@@ -411,7 +411,7 @@ export async function markLeadAsSeen(id: string): Promise<void> {
   const supabase = await createClient()
 
   await supabase
-    .from('leads')
+    .from(Tables.leads)
     .update({
       is_new: false,
       last_seen: new Date().toISOString(),

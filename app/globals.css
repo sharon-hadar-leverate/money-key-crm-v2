@@ -106,10 +106,13 @@
   border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
-  min-width: 80px;
+  min-width: fit-content;
+  max-width: 140px;
   text-align: center;
+  white-space: nowrap;
 }
 
+/* === Original 4 statuses === */
 .status-new {
   background-color: #CCE5FF;
   color: #0073EA;
@@ -128,6 +131,69 @@
 .status-lost {
   background-color: #FFD6D9;
   color: #D83A52;
+}
+
+/* === Zoho statuses (9 additional) === */
+
+/* signed - green with dashed border (distinct from customer) */
+.status-signed {
+  background-color: #E8FAF0;
+  color: #00854D;
+  border: 1px dashed #00854D33;
+}
+
+/* meeting_set - orange-red (hot stage) */
+.status-meeting-set {
+  background-color: #FFEBE6;
+  color: #D93D42;
+}
+
+/* pending_agreement - lighter orange-red with dashed border (distinct from meeting_set) */
+.status-pending-agreement {
+  background-color: #FFF5F0;
+  color: #D93D42;
+  border: 1px dashed #D93D4233;
+}
+
+/* message_sent - orange with dashed border (distinct from contacted) */
+.status-message-sent {
+  background-color: #FFF8EB;
+  color: #D17A00;
+  border: 1px dashed #D17A0033;
+}
+
+/* no_answer - neutral gray */
+.status-no-answer {
+  background-color: #F5F6F8;
+  color: #676879;
+  border: 1px solid #E6E9EF;
+}
+
+/* not_contacted - lighter blue with dashed border (distinct from new) */
+.status-not-contacted {
+  background-color: #E5F0FF;
+  color: #0073EA;
+  border: 1px dashed #0073EA33;
+}
+
+/* not_relevant - red with dashed border (distinct from lost) */
+.status-not-relevant {
+  background-color: #FFEBEE;
+  color: #D83A52;
+  border: 1px dashed #D83A5233;
+}
+
+/* closed_elsewhere - lighter red with solid border (distinct from lost and not_relevant) */
+.status-closed-elsewhere {
+  background-color: #FFF5F6;
+  color: #D83A52;
+  border: 1px solid #FFD6D9;
+}
+
+/* future_interest - teal/cyan */
+.status-future-interest {
+  background-color: #D4F4F7;
+  color: #00A0B0;
 }
 
 /* Monday.com Table Styles */

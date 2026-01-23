@@ -3,7 +3,8 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { Tables } from '@/lib/tables'
-import type { LeadKPIs, UTMPerformance, ConversionFunnelItem, TimeSeriesData } from '@/types/leads'
+import { LEAD_STATUSES, STATUS_CONFIG, PIPELINE_STAGES } from '@/types/leads'
+import type { LeadKPIs, UTMPerformance, ConversionFunnelItem, TimeSeriesData, LeadStatus, PipelineStage } from '@/types/leads'
 
 // Helper to check authentication
 async function requireAuth(): Promise<{ authenticated: true } | { authenticated: false; error: string }> {
@@ -22,6 +23,16 @@ async function requireAuth(): Promise<{ authenticated: true } | { authenticated:
   return { authenticated: true }
 }
 
+// Helper to determine pipeline stage for a status
+function getPipelineStage(status: string): PipelineStage | null {
+  for (const [stage, statuses] of Object.entries(PIPELINE_STAGES)) {
+    if ((statuses as readonly string[]).includes(status)) {
+      return stage as PipelineStage
+    }
+  }
+  return null
+}
+
 // Internal implementation functions wrapped with React.cache
 const getLeadKPIsInternal = cache(async (): Promise<LeadKPIs> => {
   const supabase = await createClient()
@@ -32,20 +43,33 @@ const getLeadKPIsInternal = cache(async (): Promise<LeadKPIs> => {
     .select('status')
     .is('deleted_at', null)
 
-  // Combined iteration: count statuses and track total in single pass
-  const counts = {
-    new: 0,
-    contacted: 0,
-    customer: 0,
+  // Initialize counts for all statuses
+  const statusCountMap: Record<string, number> = {}
+  LEAD_STATUSES.forEach(s => { statusCountMap[s] = 0 })
+
+  // Pipeline stage counts
+  const pipelineCounts: Record<PipelineStage, number> = {
+    follow_up: 0,
+    warm: 0,
+    hot: 0,
+    signed: 0,
     lost: 0,
+    future: 0,
   }
+
   let total = 0
 
   statusCounts?.forEach((lead) => {
-    const status = lead.status as keyof typeof counts
-    if (status in counts) {
-      counts[status]++
+    const status = lead.status as LeadStatus
+    if (status && status in statusCountMap) {
+      statusCountMap[status]++
       total++
+
+      // Also count by pipeline stage
+      const stage = getPipelineStage(status)
+      if (stage) {
+        pipelineCounts[stage]++
+      }
     }
   })
 
@@ -66,13 +90,25 @@ const getLeadKPIsInternal = cache(async (): Promise<LeadKPIs> => {
     weightedPipeline += revenue * probability
   })
 
+  // Calculate signed rate (customer + signed statuses)
+  const signedCount = pipelineCounts.signed
+
   return {
     totalLeads: total,
-    newLeads: counts.new,
-    contactedLeads: counts.contacted,
-    customers: counts.customer,
-    lostLeads: counts.lost,
-    conversionRate: total > 0 ? (counts.customer / total) * 100 : 0,
+    // Original status counts (for backward compatibility)
+    newLeads: statusCountMap.new,
+    contactedLeads: statusCountMap.contacted,
+    customers: statusCountMap.customer,
+    lostLeads: statusCountMap.lost,
+    // Pipeline stage counts
+    followUpLeads: pipelineCounts.follow_up,
+    warmLeads: pipelineCounts.warm,
+    hotLeads: pipelineCounts.hot,
+    signedLeads: pipelineCounts.signed,
+    futureLeads: pipelineCounts.future,
+    allLostLeads: pipelineCounts.lost,
+    // Rates
+    conversionRate: total > 0 ? (signedCount / total) * 100 : 0,
     totalPipelineValue: totalPipeline,
     weightedPipelineValue: weightedPipeline,
   }
@@ -86,13 +122,10 @@ const getConversionFunnelInternal = cache(async (): Promise<ConversionFunnelItem
     .select('status')
     .is('deleted_at', null)
 
-  // Combined iteration: count statuses and track total in single pass
-  const counts: Record<string, number> = {
-    new: 0,
-    contacted: 0,
-    customer: 0,
-    lost: 0,
-  }
+  // Initialize counts for all statuses
+  const counts: Record<string, number> = {}
+  LEAD_STATUSES.forEach(s => { counts[s] = 0 })
+
   let total = 0
 
   data?.forEach((lead) => {
@@ -102,12 +135,26 @@ const getConversionFunnelInternal = cache(async (): Promise<ConversionFunnelItem
     }
   })
 
-  return [
-    { stage: 'new', stageHe: 'חדש', count: counts.new, percentage: total ? (counts.new / total) * 100 : 0 },
-    { stage: 'contacted', stageHe: 'נוצר קשר', count: counts.contacted, percentage: total ? (counts.contacted / total) * 100 : 0 },
-    { stage: 'customer', stageHe: 'לקוח', count: counts.customer, percentage: total ? (counts.customer / total) * 100 : 0 },
-    { stage: 'lost', stageHe: 'אבוד', count: counts.lost, percentage: total ? (counts.lost / total) * 100 : 0 },
-  ]
+  // Return funnel by pipeline stage (grouped)
+  const stageLabels: Record<PipelineStage, string> = {
+    follow_up: 'מעקב',
+    warm: 'חמים',
+    hot: 'חמים מאוד',
+    signed: 'סגירה',
+    lost: 'אבודים',
+    future: 'עתידי',
+  }
+
+  return (Object.keys(PIPELINE_STAGES) as PipelineStage[]).map(stage => {
+    const stageStatuses = PIPELINE_STAGES[stage] as readonly string[]
+    const stageCount = stageStatuses.reduce((sum, s) => sum + (counts[s] || 0), 0)
+    return {
+      stage,
+      stageHe: stageLabels[stage],
+      count: stageCount,
+      percentage: total ? (stageCount / total) * 100 : 0,
+    }
+  })
 })
 
 const getUTMPerformanceInternal = cache(async (): Promise<UTMPerformance[]> => {
@@ -156,6 +203,13 @@ const getUTMPerformanceInternal = cache(async (): Promise<UTMPerformance[]> => {
     .slice(0, 5)
 })
 
+// Helper to create empty status count object
+function createEmptyStatusCounts(): Record<LeadStatus, number> {
+  const counts: Partial<Record<LeadStatus, number>> = {}
+  LEAD_STATUSES.forEach(s => { counts[s] = 0 })
+  return counts as Record<LeadStatus, number>
+}
+
 const getTimeSeriesTrendsInternal = cache(async (days: number = 30): Promise<TimeSeriesData[]> => {
   const supabase = await createClient()
 
@@ -170,14 +224,14 @@ const getTimeSeriesTrendsInternal = cache(async (days: number = 30): Promise<Tim
     .order('created_at', { ascending: true })
 
   // Group by date
-  const dateMap = new Map<string, Record<string, number>>()
+  const dateMap = new Map<string, Record<LeadStatus, number>>()
 
   data?.forEach((lead) => {
     const date = new Date(lead.created_at!).toISOString().split('T')[0]
-    const existing = dateMap.get(date) ?? { new: 0, contacted: 0, customer: 0, lost: 0 }
+    const existing = dateMap.get(date) ?? createEmptyStatusCounts()
 
-    const status = lead.status as keyof typeof existing
-    if (status in existing) {
+    const status = lead.status as LeadStatus
+    if (status && LEAD_STATUSES.includes(status)) {
       existing[status]++
     }
 
@@ -191,13 +245,24 @@ const getTimeSeriesTrendsInternal = cache(async (days: number = 30): Promise<Tim
 
   while (currentDate <= endDate) {
     const dateStr = currentDate.toISOString().split('T')[0]
-    const counts = dateMap.get(dateStr)
+    const counts = dateMap.get(dateStr) ?? createEmptyStatusCounts()
     result.push({
       date: dateStr,
-      new: counts?.new ?? 0,
-      contacted: counts?.contacted ?? 0,
-      customer: counts?.customer ?? 0,
-      lost: counts?.lost ?? 0,
+      // Original statuses
+      new: counts.new ?? 0,
+      contacted: counts.contacted ?? 0,
+      customer: counts.customer ?? 0,
+      lost: counts.lost ?? 0,
+      // Zoho statuses
+      signed: counts.signed ?? 0,
+      meeting_set: counts.meeting_set ?? 0,
+      pending_agreement: counts.pending_agreement ?? 0,
+      message_sent: counts.message_sent ?? 0,
+      no_answer: counts.no_answer ?? 0,
+      not_contacted: counts.not_contacted ?? 0,
+      not_relevant: counts.not_relevant ?? 0,
+      closed_elsewhere: counts.closed_elsewhere ?? 0,
+      future_interest: counts.future_interest ?? 0,
     })
     currentDate.setDate(currentDate.getDate() + 1)
   }

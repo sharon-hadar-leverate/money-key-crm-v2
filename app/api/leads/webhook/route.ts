@@ -2,14 +2,29 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type { Database } from '@/types/database'
 
-// Use service role for webhook (no auth required)
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Lazy initialization - only create client when needed at runtime
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !key) {
+    return null
+  }
+
+  return createClient<Database>(url, key)
+}
 
 export async function POST(request: Request) {
   try {
+    const supabase = getSupabaseClient()
+
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Webhook not configured - missing SUPABASE_SERVICE_ROLE_KEY' },
+        { status: 503 }
+      )
+    }
+
     // Optional: Verify webhook secret
     const webhookSecret = request.headers.get('x-webhook-secret')
     if (process.env.WEBHOOK_SECRET && webhookSecret !== process.env.WEBHOOK_SECRET) {

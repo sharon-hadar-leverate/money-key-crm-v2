@@ -1,27 +1,501 @@
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Monday.com Light Theme with Teal Accent */
+    --background: 220 14% 96%;
+    --foreground: 230 8% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 230 8% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 230 8% 20%;
+
+    /* Teal Primary */
+    --primary: 185 100% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light Gray */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 230 8% 40%;
+
+    --muted: 220 14% 92%;
+    --muted-foreground: 230 8% 46%;
+
+    --accent: 185 100% 35%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 354 70% 54%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 185 100% 35%;
+
+    /* Monday.com Chart Colors */
+    --chart-1: 158 64% 52%;
+    --chart-2: 218 82% 67%;
+    --chart-3: 36 95% 56%;
+    --chart-4: 276 55% 62%;
+    --chart-5: 354 70% 54%;
+
+    --radius: 0.5rem;
+
+    /* Monday.com specific colors */
+    --monday-green: 158 64% 52%;
+    --monday-blue: 218 82% 67%;
+    --monday-orange: 36 95% 56%;
+    --monday-red: 354 70% 54%;
+    --monday-purple: 276 55% 62%;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Heebo', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    min-height: 100vh;
+  }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* RTL-specific adjustments */
+[dir="rtl"] {
+  text-align: right;
+}
+
+/* Tabular numbers for data display */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Monday.com Clean Card */
+.monday-card {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #E6E9EF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.monday-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #D0D4DC;
+}
+
+/* Monday.com Status Badge Styles */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 80px;
+  text-align: center;
+}
+
+.status-new {
+  background-color: #CCE5FF;
+  color: #0073EA;
+}
+
+.status-contacted {
+  background-color: #FFF0D6;
+  color: #D17A00;
+}
+
+.status-customer {
+  background-color: #D4F4DD;
+  color: #00854D;
+}
+
+.status-lost {
+  background-color: #FFD6D9;
+  color: #D83A52;
+}
+
+/* Monday.com Table Styles */
+.monday-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #E6E9EF;
+}
+
+.monday-table thead {
+  background: #F5F6F8;
+}
+
+.monday-table th {
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #323338;
+  text-align: right;
+  border-bottom: 1px solid #E6E9EF;
+}
+
+.monday-table td {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #323338;
+  border-bottom: 1px solid #E6E9EF;
+}
+
+.monday-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.monday-table tbody tr:hover {
+  background-color: #F0FAFB;
+}
+
+.monday-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Performance optimization for large tables */
+.monday-table tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 52px;
+}
+
+/* Checkbox styling */
+.monday-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #C4C4C4;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.monday-checkbox:hover {
+  border-color: #00A0B0;
+}
+
+.monday-checkbox:checked {
+  background-color: #00A0B0;
+  border-color: #00A0B0;
+}
+
+/* Monday.com Button Styles */
+.btn-monday {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #00A0B0;
+  color: white;
+  font-weight: 500;
+  font-size: 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-monday:hover {
+  background: #008A99;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 160, 176, 0.25);
+}
+
+.btn-monday-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  color: #323338;
+  font-weight: 500;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #C4C4C4;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-monday-secondary:hover {
+  background: #F5F6F8;
+  border-color: #00A0B0;
+  color: #00A0B0;
+}
+
+/* Scrollbar styling - Light theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5F6F8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C4C4C4;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A0A0A0;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+/* Staggered animations */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+
+/* Table row hover effects */
+.table-row-hover {
+  transition: background-color 0.15s ease;
+}
+
+.table-row-hover:hover {
+  background-color: #F0FAFB;
+}
+
+/* Input focus styles - Teal */
+.input-monday:focus {
+  outline: none;
+  border-color: #00A0B0;
+  box-shadow: 0 0 0 3px rgba(0, 160, 176, 0.15);
+}
+
+/* Sidebar styles - Right side with teal accent */
+.sidebar-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: #676879;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sidebar-item:hover {
+  background: #F0FAFB;
+  color: #323338;
+}
+
+.sidebar-item.active {
+  background: #E5F6F7;
+  color: #00A0B0;
+}
+
+/* Teal accent bar on right side for active sidebar item */
+.sidebar-item.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: #00A0B0;
+  border-radius: 0 2px 2px 0;
+}
+
+/* Number display */
+.number-display {
+  font-family: 'Rubik', 'Heebo', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* KPI Card styling */
+.kpi-card {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #E6E9EF;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.kpi-card:hover {
+  border-color: #00A0B0;
+  box-shadow: 0 4px 16px rgba(0, 160, 176, 0.1);
+}
+
+/* Search input styling */
+.search-input {
+  background: white;
+  border: 1px solid #E6E9EF;
+  border-radius: 6px;
+  padding: 8px 12px 8px 36px;
+  font-size: 14px;
+  color: #323338;
+  transition: all 0.2s ease;
+  width: 240px;
+}
+
+.search-input::placeholder {
+  color: #9B9BAD;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #00A0B0;
+  box-shadow: 0 0 0 3px rgba(0, 160, 176, 0.1);
+}
+
+/* Filter button styling */
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #E6E9EF;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #676879;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  border-color: #00A0B0;
+  color: #00A0B0;
+}
+
+/* Tab navigation styling */
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #F5F6F8;
+  border-radius: 8px;
+}
+
+.tab-item {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #676879;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-item:hover {
+  color: #323338;
+}
+
+.tab-item.active {
+  background: white;
+  color: #00A0B0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Activity item styling */
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #E6E9EF;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Chart container */
+.chart-container {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #E6E9EF;
+  padding: 20px;
+}
+
+/* Progress bar styling */
+.progress-bar {
+  height: 8px;
+  background: #E6E9EF;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00A0B0 0%, #00C4B4 100%);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Empty state styling */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #676879;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .monday-table th,
+  .monday-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .search-input {
+    width: 100%;
   }
 }

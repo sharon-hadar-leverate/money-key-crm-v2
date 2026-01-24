@@ -44,6 +44,30 @@ export async function POST(request: Request) {
       )
     }
 
+    // UTM validation logging - log when key UTM fields are missing
+    const utmWarnings: string[] = []
+    if (body.utm_source && !body.utm_medium) {
+      utmWarnings.push(`utm_medium missing for source: ${body.utm_source}`)
+    }
+    if (body.utm_source && !body.utm_campaign) {
+      utmWarnings.push(`utm_campaign missing for source: ${body.utm_source}`)
+    }
+    if (body.gclid && !body.utm_source) {
+      utmWarnings.push('gclid present but utm_source missing (should be google)')
+    }
+
+    if (utmWarnings.length > 0) {
+      console.warn('[Webhook UTM Warning]', {
+        name: body.name,
+        email: body.email,
+        warnings: utmWarnings,
+        utm_source: body.utm_source,
+        utm_medium: body.utm_medium,
+        utm_campaign: body.utm_campaign,
+        gclid: body.gclid,
+      })
+    }
+
     // Insert lead
     const { data: lead, error } = await supabase
       .from('leads')

@@ -25,8 +25,8 @@ interface DateRangePickerProps {
 const PRESETS = [
   { label: "היום", getValue: () => ({ from: new Date(), to: new Date() }) },
   { label: "אתמול", getValue: () => ({ from: subDays(new Date(), 1), to: subDays(new Date(), 1) }) },
-  { label: "7 ימים אחרונים", getValue: () => ({ from: subDays(new Date(), 6), to: new Date() }) },
-  { label: "30 יום אחרונים", getValue: () => ({ from: subDays(new Date(), 29), to: new Date() }) },
+  { label: "7 ימים", getValue: () => ({ from: subDays(new Date(), 6), to: new Date() }) },
+  { label: "30 יום", getValue: () => ({ from: subDays(new Date(), 29), to: new Date() }) },
   { label: "השבוע", getValue: () => ({ from: startOfWeek(new Date(), { locale: he }), to: endOfWeek(new Date(), { locale: he }) }) },
   { label: "החודש", getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
 ] as const
@@ -72,31 +72,31 @@ export function DateRangePicker({
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <div className="flex flex-col sm:flex-row">
-            {/* Presets */}
-            <div className="border-b sm:border-b-0 sm:border-l border-[#E6E9EF] p-3 space-y-1">
-              <p className="text-xs font-medium text-[#9B9BAD] mb-2">בחירה מהירה</p>
+            {/* Presets - compact */}
+            <div className="border-b sm:border-b-0 sm:border-l border-[#E6E9EF] p-2 space-y-0.5 min-w-[90px]">
+              <p className="text-[10px] font-medium text-[#9B9BAD] mb-1 px-1">מהיר</p>
               {PRESETS.map((preset) => (
                 <button
                   key={preset.label}
                   onClick={() => handlePreset(preset)}
-                  className="w-full text-right px-3 py-1.5 rounded-md text-sm text-[#323338] hover:bg-[#F5F6F8] transition-colors"
+                  className="w-full text-right px-2 py-1 rounded text-xs text-[#323338] hover:bg-[#F5F6F8] transition-colors whitespace-nowrap"
                 >
                   {preset.label}
                 </button>
               ))}
               {value && (
                 <>
-                  <div className="border-t border-[#E6E9EF] my-2" />
+                  <div className="border-t border-[#E6E9EF] my-1" />
                   <button
                     onClick={handleClear}
-                    className="w-full text-right px-3 py-1.5 rounded-md text-sm text-[#D83A52] hover:bg-[#FFD6D9]/30 transition-colors"
+                    className="w-full text-right px-2 py-1 rounded text-xs text-[#D83A52] hover:bg-[#FFD6D9]/30 transition-colors"
                   >
-                    נקה בחירה
+                    נקה
                   </button>
                 </>
               )}
             </div>
-            {/* Calendar */}
+            {/* Calendar with month/year dropdowns for cross-month selection */}
             <div className="p-3">
               <Calendar
                 initialFocus
@@ -105,6 +105,9 @@ export function DateRangePicker({
                 selected={value}
                 onSelect={onChange}
                 numberOfMonths={1}
+                captionLayout="dropdown"
+                startMonth={new Date(2024, 0)}
+                endMonth={new Date(2030, 11)}
               />
             </div>
           </div>

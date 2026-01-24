@@ -9,6 +9,110 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      playbooks: {
+        Row: {
+          id: string
+          name: string
+          content: string
+          description: string | null
+          category: string | null
+          is_default: boolean
+          created_by: string
+          created_at: string | null
+          updated_at: string | null
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          content?: string
+          description?: string | null
+          category?: string | null
+          is_default?: boolean
+          created_by: string
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          content?: string
+          description?: string | null
+          category?: string | null
+          is_default?: boolean
+          created_by?: string
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          email: string
+          display_name: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          email: string
+          display_name: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          email?: string
+          display_name?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      lead_notes: {
+        Row: {
+          id: string
+          lead_id: string
+          content: string
+          user_id: string
+          created_at: string | null
+          updated_at: string | null
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          lead_id: string
+          content: string
+          user_id: string
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          lead_id?: string
+          content?: string
+          user_id?: string
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_notes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_events: {
         Row: {
           created_at: string | null
@@ -72,6 +176,7 @@ export type Database = {
           last_seen: string | null
           name: string
           phone: string | null
+          playbook_id: string | null
           probability: number | null
           referrer: string | null
           source: string | null
@@ -103,6 +208,7 @@ export type Database = {
           last_seen?: string | null
           name: string
           phone?: string | null
+          playbook_id?: string | null
           probability?: number | null
           referrer?: string | null
           source?: string | null
@@ -134,6 +240,7 @@ export type Database = {
           last_seen?: string | null
           name?: string
           phone?: string | null
+          playbook_id?: string | null
           probability?: number | null
           referrer?: string | null
           source?: string | null
@@ -147,7 +254,15 @@ export type Database = {
           utm_source?: string | null
           utm_term?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leads_playbook_id_fkey"
+            columns: ["playbook_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

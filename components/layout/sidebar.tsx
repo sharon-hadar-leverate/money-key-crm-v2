@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Users, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, LogOut, Menu, X, BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import moneyKeyLogo from '@/app/assets/moneykey-linkdin3.png'
@@ -13,6 +13,7 @@ import moneyKeyLogo from '@/app/assets/moneykey-linkdin3.png'
 const navigation = [
   { name: 'לוח בקרה', href: '/dashboard', icon: LayoutDashboard },
   { name: 'לידים', href: '/leads', icon: Users },
+  { name: 'הדרכות', href: '/playbooks', icon: BookOpen },
   { name: 'הגדרות', href: '/settings', icon: Settings },
 ]
 

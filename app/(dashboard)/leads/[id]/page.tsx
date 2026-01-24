@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { Header } from '@/components/layout/header'
 import { LeadDetail } from '@/components/leads/lead-detail'
 import { getLeadWithEvents, markLeadAsSeen } from '@/actions/leads'
+import { getNotes } from '@/actions/notes'
+import { getPlaybooks, getPlaybookForLead, getDefaultPlaybook } from '@/actions/playbooks'
 import { ArrowRight } from 'lucide-react'
 
 interface LeadPageProps {
@@ -11,7 +13,15 @@ interface LeadPageProps {
 
 export default async function LeadPage({ params }: LeadPageProps) {
   const { id } = await params
-  const result = await getLeadWithEvents(id)
+
+  // Fetch lead data, notes, and playbooks in parallel
+  const [result, notes, playbooks, currentPlaybook, defaultPlaybook] = await Promise.all([
+    getLeadWithEvents(id),
+    getNotes(id),
+    getPlaybooks(),
+    getPlaybookForLead(id),
+    getDefaultPlaybook(),
+  ])
 
   if (!result) {
     notFound()
@@ -35,7 +45,14 @@ export default async function LeadPage({ params }: LeadPageProps) {
             חזרה ללידים
           </Link>
         </div>
-        <LeadDetail lead={result.lead} events={result.events} />
+        <LeadDetail
+          lead={result.lead}
+          events={result.events}
+          notes={notes}
+          playbooks={playbooks}
+          currentPlaybook={currentPlaybook}
+          defaultPlaybookId={defaultPlaybook?.id ?? null}
+        />
       </div>
     </>
   )

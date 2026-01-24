@@ -100,8 +100,10 @@ export async function getLeads(options?: LeadFilterOptions): Promise<{
     query = query.is('deleted_at', null)
   }
 
-  // Status filter
-  if (options?.status) {
+  // Status filter (single or multiple)
+  if (options?.statuses && options.statuses.length > 0) {
+    query = query.in('status', options.statuses)
+  } else if (options?.status) {
     query = query.eq('status', options.status)
   }
 

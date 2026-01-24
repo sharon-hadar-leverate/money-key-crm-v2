@@ -1,7 +1,6 @@
 'use client'
 
-import Link from 'next/link'
-import { Clock, PhoneCall, CalendarCheck, UserCheck, XCircle, Wallet, TrendingUp } from 'lucide-react'
+import { Users, TrendingUp, Wallet, Target } from 'lucide-react'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import type { LeadKPIs } from '@/types/leads'
 
@@ -9,131 +8,62 @@ interface KPICardsProps {
   kpis: LeadKPIs
 }
 
-// Static card configuration hoisted outside component (Vercel best practice: rendering-hoist-jsx)
-const PIPELINE_CARDS = [
-  {
-    key: 'followUp',
-    title: 'במעקב',
-    kpiKey: 'followUpLeads' as const,
-    icon: Clock,
-    iconBg: 'bg-[#CCE5FF]',
-    iconColor: 'text-[#0073EA]',
-    href: '/leads?stage=follow_up',
-  },
-  {
-    key: 'warm',
-    title: 'חמים',
-    kpiKey: 'warmLeads' as const,
-    icon: PhoneCall,
-    iconBg: 'bg-[#FFF0D6]',
-    iconColor: 'text-[#D17A00]',
-    href: '/leads?stage=warm',
-  },
-  {
-    key: 'hot',
-    title: 'חמים מאוד',
-    kpiKey: 'hotLeads' as const,
-    icon: CalendarCheck,
-    iconBg: 'bg-[#FFEBE6]',
-    iconColor: 'text-[#D93D42]',
-    href: '/leads?stage=hot',
-  },
-  {
-    key: 'signed',
-    title: 'לקוחות',
-    kpiKey: 'signedLeads' as const,
-    icon: UserCheck,
-    iconBg: 'bg-[#D4F4DD]',
-    iconColor: 'text-[#00854D]',
-    href: '/leads?stage=signed',
-  },
-  {
-    key: 'lost',
-    title: 'אבודים',
-    kpiKey: 'allLostLeads' as const,
-    icon: XCircle,
-    iconBg: 'bg-[#FFD6D9]',
-    iconColor: 'text-[#D83A52]',
-    href: '/leads?stage=lost',
-  },
-  {
-    key: 'conversion',
-    title: 'אחוז המרה',
-    kpiKey: 'conversionRate' as const,
-    icon: TrendingUp,
-    iconBg: 'bg-[#EDD9FB]',
-    iconColor: 'text-[#9D5BD2]',
-    isPercentage: true,
-    href: '/leads?stage=signed',
-  },
-  {
-    key: 'pipeline',
-    title: 'הכנסה צפויה',
-    kpiKey: 'weightedPipelineValue' as const,
-    icon: Wallet,
-    iconBg: 'bg-[#D4F4F7]',
-    iconColor: 'text-[#00A0B0]',
-    isCurrency: true,
-    subtitleKey: 'totalPipelineValue' as const,
-    href: '/leads',
-  },
-] as const
-
 export function KPICards({ kpis }: KPICardsProps) {
+  const activeLeads = kpis.followUpLeads + kpis.warmLeads + kpis.hotLeads
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-      {PIPELINE_CARDS.map((card) => {
-        const value = kpis[card.kpiKey]
-        const Icon = card.icon
-        const subtitle = 'subtitleKey' in card ? kpis[card.subtitleKey] : null
-        const href = 'href' in card ? card.href : undefined
-
-        const CardContent = (
-          <>
-            <div className="flex items-start justify-between mb-4">
-              <div
-                className={`p-3 rounded-lg ${card.iconBg} transition-transform group-hover:scale-105 duration-200`}
-              >
-                <Icon className={`h-5 w-5 ${card.iconColor}`} />
-              </div>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-[#676879] mb-1">{card.title}</p>
-              <p className="text-2xl font-bold text-[#323338] number-display">
-                {'isCurrency' in card && card.isCurrency
-                  ? formatCurrency(value)
-                  : 'isPercentage' in card && card.isPercentage
-                    ? `${value.toFixed(1)}%`
-                    : formatNumber(value)}
-              </p>
-              {subtitle !== null && (
-                <p className="text-xs text-[#9B9BAD] mt-1">
-                  סה&quot;כ: {formatCurrency(subtitle)}
-                </p>
-              )}
-            </div>
-          </>
-        )
-
-        if (href) {
-          return (
-            <Link
-              key={card.key}
-              href={href}
-              className="kpi-card group cursor-pointer block"
-            >
-              {CardContent}
-            </Link>
-          )
-        }
-
-        return (
-          <div key={card.key} className="kpi-card group">
-            {CardContent}
+    <div className="monday-card p-4">
+      <div className="flex items-center justify-between gap-6 flex-wrap">
+        {/* Total Leads */}
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#CCE5FF] to-[#B3D6FF] flex items-center justify-center">
+            <Users className="h-6 w-6 text-[#0073EA]" strokeWidth={2} />
           </div>
-        )
-      })}
+          <div>
+            <p className="text-xs text-[#9B9BAD] font-medium">סה״כ לידים</p>
+            <p className="text-2xl font-bold text-[#1a1d23] number-display">{formatNumber(kpis.totalLeads)}</p>
+          </div>
+        </div>
+
+        <div className="h-10 w-px bg-[#E6E9EF]" />
+
+        {/* Active Pipeline */}
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FFF0D6] to-[#FFE4B8] flex items-center justify-center">
+            <Target className="h-6 w-6 text-[#D17A00]" strokeWidth={2} />
+          </div>
+          <div>
+            <p className="text-xs text-[#9B9BAD] font-medium">פעילים בצנרת</p>
+            <p className="text-2xl font-bold text-[#D17A00] number-display">{formatNumber(activeLeads)}</p>
+          </div>
+        </div>
+
+        <div className="h-10 w-px bg-[#E6E9EF]" />
+
+        {/* Conversion Rate */}
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4F4DD] to-[#B8E8C4] flex items-center justify-center">
+            <TrendingUp className="h-6 w-6 text-[#00854D]" strokeWidth={2} />
+          </div>
+          <div>
+            <p className="text-xs text-[#9B9BAD] font-medium">אחוז המרה</p>
+            <p className="text-2xl font-bold text-[#00854D] number-display">{kpis.conversionRate.toFixed(1)}%</p>
+          </div>
+        </div>
+
+        <div className="h-10 w-px bg-[#E6E9EF]" />
+
+        {/* Expected Revenue */}
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#EDD9FB] to-[#DCC4F0] flex items-center justify-center">
+            <Wallet className="h-6 w-6 text-[#9D5BD2]" strokeWidth={2} />
+          </div>
+          <div>
+            <p className="text-xs text-[#9B9BAD] font-medium">הכנסה צפויה</p>
+            <p className="text-2xl font-bold text-[#9D5BD2] number-display">{formatCurrency(kpis.weightedPipelineValue)}</p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

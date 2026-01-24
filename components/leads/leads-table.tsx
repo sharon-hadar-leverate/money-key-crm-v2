@@ -22,17 +22,20 @@ import { formatDate, formatCurrency } from '@/lib/utils'
 import { MoreHorizontal, Search, Eye, Pencil, Trash, Users, Filter, ChevronDown, MessageSquare, Copy, Check } from 'lucide-react'
 import { softDeleteLead, updateLeadStatus } from '@/actions/leads'
 import { toast } from 'sonner'
-import { PIPELINE_STAGES } from '@/types/leads'
+import { PIPELINE_STAGES, STATUS_CONFIG } from '@/types/leads'
 import { PIPELINE_LABELS } from '@/lib/status-utils'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 import type { Lead, LeadStatus, PipelineStage } from '@/types/leads'
+import { cn } from '@/lib/utils'
 
 interface LeadsTableProps {
   leads: Lead[]
   totalCount: number
   initialStage?: PipelineStage
+  initialStatuses?: LeadStatus[]
+  noteCounts?: Record<string, number>
 }
 
 // Inline status dropdown component
@@ -108,12 +111,52 @@ function InlineStatusDropdown({
   )
 }
 
-export function LeadsTable({ leads, totalCount, initialStage }: LeadsTableProps) {
+export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, noteCounts = {} }: LeadsTableProps) {
   const [search, setSearch] = useState('')
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [stageFilter, setStageFilter] = useState<PipelineStage | undefined>(initialStage)
+  const [statusFilter, setStatusFilter] = useState<Set<LeadStatus>>(() => {
+    // Initialize from initialStatuses or initialStage
+    if (initialStatuses && initialStatuses.length > 0) {
+      return new Set(initialStatuses)
+    }
+    if (initialStage) {
+      return new Set(PIPELINE_STAGES[initialStage] as unknown as LeadStatus[])
+    }
+    return new Set()
+  })
+  const [statusFilterOpen, setStatusFilterOpen] = useState(false)
+  const [statusSearchQuery, setStatusSearchQuery] = useState('')
+
+  const toggleStatus = (status: LeadStatus) => {
+    const newFilter = new Set(statusFilter)
+    if (newFilter.has(status)) {
+      newFilter.delete(status)
+    } else {
+      newFilter.add(status)
+    }
+    setStatusFilter(newFilter)
+  }
+
+  const toggleStage = (stage: PipelineStage) => {
+    const stageStatuses = PIPELINE_STAGES[stage] as unknown as LeadStatus[]
+    const allSelected = stageStatuses.every(s => statusFilter.has(s))
+
+    const newFilter = new Set(statusFilter)
+    if (allSelected) {
+      // Remove all statuses from this stage
+      stageStatuses.forEach(s => newFilter.delete(s))
+    } else {
+      // Add all statuses from this stage
+      stageStatuses.forEach(s => newFilter.add(s))
+    }
+    setStatusFilter(newFilter)
+  }
+
+  const clearStatusFilter = () => {
+    setStatusFilter(new Set())
+  }
 
   const filteredLeads = useMemo(() =>
     leads.filter((lead) => {
@@ -137,17 +180,16 @@ export function LeadsTable({ leads, totalCount, initialStage }: LeadsTableProps)
         }
       }
 
-      // Stage filter
-      if (stageFilter) {
-        const stageStatuses = PIPELINE_STAGES[stageFilter] as readonly string[]
-        if (!stageStatuses.includes(lead.status as string)) {
+      // Multi-select status filter
+      if (statusFilter.size > 0) {
+        if (!statusFilter.has(lead.status as LeadStatus)) {
           return false
         }
       }
 
       return true
     }),
-    [leads, search, dateRange, stageFilter]
+    [leads, search, dateRange, statusFilter]
   )
 
   const handleStatusChange = async (id: string, status: LeadStatus) => {
@@ -220,38 +262,117 @@ export function LeadsTable({ leads, totalCount, initialStage }: LeadsTableProps)
             />
           </div>
 
-          {/* Stage Filter */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="filter-btn">
+          {/* Multi-select Status Filter */}
+          <Popover open={statusFilterOpen} onOpenChange={setStatusFilterOpen}>
+            <PopoverTrigger asChild>
+              <button className={cn(
+                "filter-btn",
+                statusFilter.size > 0 && "border-[#00A0B0] bg-[#E5F6F7]"
+              )}>
                 <Filter className="w-4 h-4" />
                 <span className="hidden sm:inline">
-                  {stageFilter ? PIPELINE_LABELS[stageFilter] : 'שלב'}
+                  {statusFilter.size > 0 ? `סטטוס (${statusFilter.size})` : 'סטטוס'}
                 </span>
                 <ChevronDown className="w-3 h-3" />
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-white border border-[#E6E9EF] shadow-lg">
-              <DropdownMenuItem
-                onClick={() => setStageFilter(undefined)}
-                className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8]"
-              >
-                הכל
-                {!stageFilter && <Check className="h-4 w-4 ms-auto text-[#00A0B0]" />}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-[#E6E9EF]" />
-              {(Object.keys(PIPELINE_STAGES) as PipelineStage[]).map((stage) => (
-                <DropdownMenuItem
-                  key={stage}
-                  onClick={() => setStageFilter(stage)}
-                  className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8]"
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-0" align="start">
+              {/* Search and clear */}
+              <div className="p-2 border-b border-[#E6E9EF] flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9B9BAD]" />
+                  <input
+                    placeholder="חיפוש סטטוס..."
+                    value={statusSearchQuery}
+                    onChange={(e) => setStatusSearchQuery(e.target.value)}
+                    className="w-full h-8 pr-8 pl-2 text-sm rounded border border-[#E6E9EF] focus:outline-none focus:border-[#00A0B0]"
+                  />
+                </div>
+                {statusFilter.size > 0 && (
+                  <button
+                    onClick={clearStatusFilter}
+                    className="text-xs text-[#00A0B0] hover:underline whitespace-nowrap"
+                  >
+                    נקה הכל
+                  </button>
+                )}
+              </div>
+
+              {/* Status list grouped by pipeline stage */}
+              <div className="max-h-80 overflow-y-auto">
+                {(Object.entries(PIPELINE_STAGES) as [PipelineStage, readonly LeadStatus[]][]).map(([stage, statuses]) => {
+                  const filteredStatuses = statuses.filter(status => {
+                    if (!statusSearchQuery) return true
+                    const statusLabel = STATUS_CONFIG[status]?.label || status
+                    const stageLabel = PIPELINE_LABELS[stage]
+                    return statusLabel.toLowerCase().includes(statusSearchQuery.toLowerCase()) ||
+                           stageLabel.toLowerCase().includes(statusSearchQuery.toLowerCase()) ||
+                           status.toLowerCase().includes(statusSearchQuery.toLowerCase())
+                  })
+
+                  if (filteredStatuses.length === 0) return null
+
+                  const allSelected = filteredStatuses.every(s => statusFilter.has(s))
+                  const someSelected = filteredStatuses.some(s => statusFilter.has(s))
+
+                  return (
+                    <div key={stage}>
+                      {/* Stage header with checkbox to select all */}
+                      <button
+                        onClick={() => toggleStage(stage)}
+                        className="w-full px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-[#676879] bg-[#F5F6F8] hover:bg-[#ECEDF0] sticky top-0 transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          ref={el => { if (el) el.indeterminate = someSelected && !allSelected }}
+                          onChange={() => toggleStage(stage)}
+                          className="monday-checkbox"
+                        />
+                        {PIPELINE_LABELS[stage]}
+                        <span className="text-[#9B9BAD] font-normal mr-auto">
+                          ({filteredStatuses.filter(s => statusFilter.has(s)).length}/{filteredStatuses.length})
+                        </span>
+                      </button>
+                      {/* Individual statuses - minimal design with color dot */}
+                      {filteredStatuses.map((status) => {
+                        const config = STATUS_CONFIG[status]
+                        return (
+                          <button
+                            key={status}
+                            onClick={() => toggleStatus(status)}
+                            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-[#F5F6F8] transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={statusFilter.has(status)}
+                              onChange={() => toggleStatus(status)}
+                              className="monday-checkbox"
+                            />
+                            <span className={cn(
+                              "w-2.5 h-2.5 rounded-full shrink-0",
+                              config?.bgColor || "bg-gray-300"
+                            )} />
+                            <span className="text-sm text-[#323338]">{config?.label || status}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Footer with apply button */}
+              <div className="p-2 border-t border-[#E6E9EF] flex justify-end">
+                <button
+                  onClick={() => setStatusFilterOpen(false)}
+                  className="px-4 py-1.5 rounded-lg bg-[#00A0B0] text-white text-sm hover:bg-[#008A99] transition-colors"
                 >
-                  {PIPELINE_LABELS[stage]}
-                  {stageFilter === stage && <Check className="h-4 w-4 ms-auto text-[#00A0B0]" />}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  אישור
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Count badge */}
@@ -332,8 +453,8 @@ export function LeadsTable({ leads, totalCount, initialStage }: LeadsTableProps)
                           {lead.is_new && (
                             <span className="inline-flex h-2 w-2 rounded-full bg-[#0073EA]" />
                           )}
-                          {Boolean((lead.custom_fields as Record<string, unknown> | null)?.zoho_notes) && (
-                            <span title="יש הערות מכירה" className="text-[#E07239]">
+                          {(Boolean((lead.custom_fields as Record<string, unknown> | null)?.zoho_notes) || (noteCounts[lead.id] ?? 0) > 0) && (
+                            <span title="יש הערות" className="text-[#E07239]">
                               <MessageSquare className="h-3.5 w-3.5" />
                             </span>
                           )}

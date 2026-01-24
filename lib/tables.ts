@@ -7,6 +7,9 @@ export function getTableNames() {
   return {
     leads: isDev ? 'dev_leads' : 'leads',
     lead_events: isDev ? 'dev_lead_events' : 'lead_events',
+    user_profiles: isDev ? 'dev_user_profiles' : 'user_profiles',
+    lead_notes: isDev ? 'dev_lead_notes' : 'lead_notes',
+    playbooks: isDev ? 'dev_playbooks' : 'playbooks',
   }
 }
 
@@ -18,5 +21,14 @@ export const Tables = {
   },
   get lead_events(): 'lead_events' {
     return (process.env.BYPASS_AUTH === 'true' ? 'dev_lead_events' : 'lead_events') as 'lead_events'
+  },
+  get user_profiles(): 'user_profiles' {
+    return (process.env.BYPASS_AUTH === 'true' ? 'dev_user_profiles' : 'user_profiles') as 'user_profiles'
+  },
+  get lead_notes(): 'lead_notes' {
+    return (process.env.BYPASS_AUTH === 'true' ? 'dev_lead_notes' : 'lead_notes') as 'lead_notes'
+  },
+  get playbooks(): 'playbooks' {
+    return (process.env.BYPASS_AUTH === 'true' ? 'dev_playbooks' : 'playbooks') as 'playbooks'
   },
 }

@@ -3,15 +3,18 @@
 import { formatRelativeTime } from '@/lib/utils'
 import { EVENT_CONFIG, type EventType } from '@/types/leads'
 import type { LeadEvent } from '@/types/leads'
-import { Plus, Pencil, ArrowLeftRight, RefreshCw, Trash, RotateCcw, History } from 'lucide-react'
+import { Plus, Pencil, ArrowLeftRight, RefreshCw, Trash, RotateCcw, History, MessageSquarePlus, MessageSquare, MessageSquareX } from 'lucide-react'
 
-const ICONS = {
+const ICONS: Record<EventType, typeof Plus> = {
   created: Plus,
   updated: Pencil,
   field_changed: ArrowLeftRight,
   status_changed: RefreshCw,
   deleted: Trash,
   restored: RotateCcw,
+  note_added: MessageSquarePlus,
+  note_updated: MessageSquare,
+  note_deleted: MessageSquareX,
 }
 
 interface TimelineProps {

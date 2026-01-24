@@ -22,10 +22,13 @@ function Calendar({
       locale={he}
       dir="rtl"
       classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+        months: "flex flex-col sm:flex-row gap-4",
         month: "space-y-4",
-        month_caption: "flex justify-center pt-1 relative items-center",
+        month_caption: "flex justify-center pt-1 relative items-center gap-1",
         caption_label: "text-sm font-medium text-[#323338]",
+        dropdowns: "flex items-center gap-2",
+        dropdown: "appearance-none bg-white border border-[#E6E9EF] rounded-md px-2 py-1 text-sm text-[#323338] hover:border-[#00A0B0] focus:outline-none focus:border-[#00A0B0] cursor-pointer",
+        dropdown_root: "relative",
         nav: "space-x-1 flex items-center",
         button_previous: cn(
           "absolute left-1 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 inline-flex items-center justify-center rounded-md border border-[#E6E9EF] hover:bg-[#F5F6F8] transition-colors"

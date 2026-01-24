@@ -36,7 +36,7 @@ export const PIPELINE_LABELS: Record<PipelineStage, string> = {
   follow_up: 'מעקב',
   warm: 'חמים',
   hot: 'חמים מאוד',
-  signed: 'סגירה',
+  signed: 'לקוחות פעילים',
   lost: 'אבודים',
   future: 'עתידי',
 }

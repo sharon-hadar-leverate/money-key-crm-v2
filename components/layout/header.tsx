@@ -1,6 +1,7 @@
 'use client'
 
-import { Bell, Search } from 'lucide-react'
+import Link from 'next/link'
+import { Bell, Search, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
@@ -9,9 +10,10 @@ import { getInitials } from '@/lib/utils'
 interface HeaderProps {
   title: string
   subtitle?: string
+  backHref?: string
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, backHref }: HeaderProps) {
   const [user, setUser] = useState<User | null>(null)
   const supabase = createClient()
 
@@ -24,11 +26,22 @@ export function Header({ title, subtitle }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-[#E6E9EF]">
       <div className="flex h-14 items-center justify-between px-6">
-        <div>
-          <h1 className="text-lg font-semibold text-[#323338]">{title}</h1>
-          {subtitle && (
-            <p className="text-xs text-[#676879]">{subtitle}</p>
+        <div className="flex items-center gap-4">
+          {backHref && (
+            <Link
+              href={backHref}
+              className="p-2 rounded-lg hover:bg-[#F5F6F8] text-[#676879] hover:text-[#323338] transition-all"
+              title="חזרה"
+            >
+              <ArrowRight className="h-5 w-5" />
+            </Link>
           )}
+          <div>
+            <h1 className="text-lg font-semibold text-[#323338]">{title}</h1>
+            {subtitle && (
+              <p className="text-xs text-[#676879]">{subtitle}</p>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

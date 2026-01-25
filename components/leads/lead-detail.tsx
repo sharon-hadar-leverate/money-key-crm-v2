@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import { StatusBadge } from './status-badge'
 import { Timeline } from './timeline'
-import { NotesSection } from './notes-section'
 import { PlaybookPanel } from '@/components/playbooks'
 import { formatDate, formatCurrency, getInitials } from '@/lib/utils'
-import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent, MessageSquare, Copy, Check, ChevronDown, Search, FileText } from 'lucide-react'
+import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent, MessageSquare, Copy, Check, ChevronDown, Search, FileText, Plus } from 'lucide-react'
 import { updateLead, updateLeadStatus } from '@/actions/leads'
 import { toast } from 'sonner'
 import { STATUS_CONFIG, PIPELINE_STAGES } from '@/types/leads'
@@ -413,17 +412,6 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
 
   return (
     <div className="flex gap-6">
-      {/* Playbook Panel - Left Side */}
-      {playbooks.length > 0 && (
-        <PlaybookPanel
-          leadId={lead.id}
-          playbooks={playbooks}
-          currentPlaybook={currentPlaybook}
-          currentPlaybookId={lead.playbook_id ?? null}
-          defaultPlaybookId={defaultPlaybookId}
-        />
-      )}
-
       {/* Main Content */}
       <div className="flex-1 min-w-0">
         {/* Tabs */}
@@ -508,140 +496,206 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
               </div>
             </div>
 
-            {/* Contact Info */}
-            <div className="monday-card p-5">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 rounded-lg bg-[#CCE5FF]">
-                  <User className="h-4 w-4 text-[#0073EA]" />
+            {/* Contact & Financial Info Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Contact Info */}
+              <div className="monday-card p-5">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="p-2 rounded-lg bg-[#CCE5FF]">
+                    <User className="h-4 w-4 text-[#0073EA]" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-[#323338]">פרטי קשר</h3>
                 </div>
-                <h3 className="text-sm font-semibold text-[#323338]">פרטי קשר</h3>
+
+                {isEditing ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm text-[#676879]">שם מלא</label>
+                      <input
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm text-[#676879]">אימייל</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm text-[#676879]">טלפון</label>
+                      <input
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors group">
+                      <div className="p-2 rounded-lg bg-white">
+                        <Mail className="h-4 w-4 text-[#676879]" />
+                      </div>
+                      <span className="text-[#323338] flex-1">{lead.email || <span className="text-[#C4C4C4]">לא צוין</span>}</span>
+                      {lead.email && (
+                        <button
+                          onClick={copyEmail}
+                          className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
+                          title="העתק אימייל"
+                        >
+                          <Copy className="h-4 w-4 text-[#676879]" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors group">
+                      <div className="p-2 rounded-lg bg-white">
+                        <Phone className="h-4 w-4 text-[#676879]" />
+                      </div>
+                      <span className="text-[#323338] tabular-nums flex-1" dir="ltr">{lead.phone || <span className="text-[#C4C4C4]">לא צוין</span>}</span>
+                      {lead.phone && (
+                        <button
+                          onClick={copyPhone}
+                          className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
+                          title="העתק טלפון"
+                        >
+                          <Copy className="h-4 w-4 text-[#676879]" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors">
+                      <div className="p-2 rounded-lg bg-white">
+                        <Calendar className="h-4 w-4 text-[#676879]" />
+                      </div>
+                      <span className="text-[#323338]">נוצר: {formatDate(lead.created_at)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {isEditing ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm text-[#676879]">שם מלא</label>
-                    <input
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
-                    />
+              {/* Financial Info */}
+              <div className="monday-card p-5">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="p-2 rounded-lg bg-[#E5F6F7]">
+                    <Wallet className="h-4 w-4 text-[#00A0B0]" />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-[#676879]">אימייל</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-[#676879]">טלפון</label>
-                    <input
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
-                      dir="ltr"
-                    />
-                  </div>
+                  <h3 className="text-sm font-semibold text-[#323338]">מידע פיננסי</h3>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors group">
-                    <div className="p-2 rounded-lg bg-white">
-                      <Mail className="h-4 w-4 text-[#676879]" />
-                    </div>
-                    <span className="text-[#323338] flex-1">{lead.email || <span className="text-[#C4C4C4]">לא צוין</span>}</span>
-                    {lead.email && (
-                      <button
-                        onClick={copyEmail}
-                        className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
-                        title="העתק אימייל"
-                      >
-                        <Copy className="h-4 w-4 text-[#676879]" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors group">
-                    <div className="p-2 rounded-lg bg-white">
-                      <Phone className="h-4 w-4 text-[#676879]" />
-                    </div>
-                    <span className="text-[#323338] tabular-nums flex-1" dir="ltr">{lead.phone || <span className="text-[#C4C4C4]">לא צוין</span>}</span>
-                    {lead.phone && (
-                      <button
-                        onClick={copyPhone}
-                        className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
-                        title="העתק טלפון"
-                      >
-                        <Copy className="h-4 w-4 text-[#676879]" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 p-3 rounded-lg bg-[#F5F6F8] hover:bg-[#ECEDF0] transition-colors">
-                    <div className="p-2 rounded-lg bg-white">
-                      <Calendar className="h-4 w-4 text-[#676879]" />
-                    </div>
-                    <span className="text-[#323338]">נוצר: {formatDate(lead.created_at)}</span>
-                  </div>
-                </div>
-              )}
-            </div>
 
-            {/* Financial Info */}
-            <div className="monday-card p-5">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 rounded-lg bg-[#D4F4DD]">
-                  <Wallet className="h-4 w-4 text-[#00854D]" />
-                </div>
-                <h3 className="text-sm font-semibold text-[#323338]">מידע פיננסי</h3>
+                {isEditing ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm text-[#676879]">הכנסה צפויה (₪)</label>
+                      <input
+                        type="number"
+                        value={formData.expected_revenue}
+                        onChange={(e) => setFormData({ ...formData, expected_revenue: e.target.value })}
+                        className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm text-[#676879]">הסתברות (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.probability}
+                        onChange={(e) => setFormData({ ...formData, probability: e.target.value })}
+                        className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+                    {/* Expected Revenue Metric */}
+                    <div className={cn(
+                      "p-4 rounded-xl border transition-all duration-300 group relative",
+                      !lead.expected_revenue 
+                        ? "bg-amber-50/30 border-amber-200/60 shadow-sm" 
+                        : "bg-white border-[#E6E9EF] shadow-sm hover:border-[#00A0B0]/30"
+                    )}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 text-[#676879] text-xs font-medium uppercase tracking-wider">
+                          <TrendingUp className={cn(
+                            "w-3.5 h-3.5",
+                            !lead.expected_revenue ? "text-amber-500" : "text-[#00A0B0]"
+                          )} />
+                          הכנסה צפויה
+                        </div>
+                        {!lead.expected_revenue && (
+                          <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                        )}
+                      </div>
+                      
+                      {!lead.expected_revenue ? (
+                        <button 
+                          onClick={() => setIsEditing(true)}
+                          className="mt-1 w-full py-3 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-amber-200 bg-white/50 text-amber-600 hover:bg-amber-50 hover:border-amber-400 hover:text-amber-700 transition-all"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span className="text-sm font-bold">הזן הכנסה</span>
+                        </button>
+                      ) : (
+                        <div className="text-2xl font-bold text-[#323338] number-display">
+                          {formatCurrency(lead.expected_revenue)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Probability Metric */}
+                    <div className={cn(
+                      "p-4 rounded-xl border transition-all duration-300 group relative",
+                      !lead.probability 
+                        ? "bg-amber-50/30 border-amber-200/60 shadow-sm" 
+                        : "bg-white border-[#E6E9EF] shadow-sm hover:border-[#00A0B0]/30"
+                    )}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2 text-[#676879] text-xs font-medium uppercase tracking-wider">
+                          <Percent className={cn(
+                            "w-3.5 h-3.5",
+                            !lead.probability ? "text-amber-500" : "text-[#9D5BD2]"
+                          )} />
+                          הסתברות סגירה
+                        </div>
+                        {!lead.probability && (
+                          <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                        )}
+                      </div>
+
+                      {!lead.probability ? (
+                        <button 
+                          onClick={() => setIsEditing(true)}
+                          className="w-full py-3 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-amber-200 bg-white/50 text-amber-600 hover:bg-amber-50 hover:border-amber-400 hover:text-amber-700 transition-all"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span className="text-sm font-bold">קבע הסתברות</span>
+                        </button>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-bold text-[#323338]">{lead.probability}%</span>
+                          </div>
+                          <div className="h-2 w-full bg-[#ECEDF0] rounded-full overflow-hidden">
+                            <div 
+                              className={cn(
+                                "h-full transition-all duration-1000 ease-out rounded-full",
+                                (lead.probability ?? 0) > 70 ? "bg-[#00854D]" : 
+                                (lead.probability ?? 0) > 30 ? "bg-[#00A0B0]" : "bg-[#D83A52]"
+                              )}
+                              style={{ width: `${lead.probability}%` }}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {isEditing ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm text-[#676879]">הכנסה צפויה (₪)</label>
-                    <input
-                      type="number"
-                      value={formData.expected_revenue}
-                      onChange={(e) => setFormData({ ...formData, expected_revenue: e.target.value })}
-                      className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-[#676879]">הסתברות (%)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.probability}
-                      onChange={(e) => setFormData({ ...formData, probability: e.target.value })}
-                      className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="p-4 rounded-lg bg-[#D4F4DD]/30 border border-[#D4F4DD]">
-                    <div className="flex items-center gap-2 text-[#676879] text-sm mb-2">
-                      <TrendingUp className="w-4 h-4 text-[#00854D]" />
-                      הכנסה צפויה
-                    </div>
-                    <span className="text-xl font-bold text-[#323338] number-display">
-                      {formatCurrency(lead.expected_revenue)}
-                    </span>
-                  </div>
-                  <div className="p-4 rounded-lg bg-[#EDD9FB]/30 border border-[#EDD9FB]">
-                    <div className="flex items-center gap-2 text-[#676879] text-sm mb-2">
-                      <Percent className="w-4 h-4 text-[#9D5BD2]" />
-                      הסתברות
-                    </div>
-                    <span className="text-xl font-bold text-[#323338] number-display">
-                      {lead.probability ?? 0}%
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Zoho Notes */}
@@ -707,9 +761,6 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
               </div>
             )}
 
-            {/* Notes Section */}
-            <NotesSection leadId={lead.id} initialNotes={notes} />
-
             {isEditing && (
               <div className="flex gap-3">
                 <button
@@ -748,6 +799,16 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
           </div>
         )}
       </div>
+
+      {/* Playbook Panel - Left Side (RTL) */}
+      <PlaybookPanel
+        leadId={lead.id}
+        playbooks={playbooks}
+        currentPlaybook={currentPlaybook}
+        currentPlaybookId={lead.playbook_id ?? null}
+        defaultPlaybookId={defaultPlaybookId}
+        initialNotes={notes}
+      />
     </div>
   )
 }

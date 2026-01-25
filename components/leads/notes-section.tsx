@@ -11,9 +11,10 @@ import { cn } from '@/lib/utils'
 interface NotesSectionProps {
   leadId: string
   initialNotes?: NoteWithUser[]
+  isEmbedded?: boolean
 }
 
-export function NotesSection({ leadId, initialNotes = [] }: NotesSectionProps) {
+export function NotesSection({ leadId, initialNotes = [], isEmbedded = false }: NotesSectionProps) {
   const [notes, setNotes] = useState<NoteWithUser[]>(initialNotes)
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -106,31 +107,43 @@ export function NotesSection({ leadId, initialNotes = [] }: NotesSectionProps) {
   }
 
   return (
-    <div className="monday-card overflow-hidden">
+    <div className={cn("monday-card overflow-hidden", isEmbedded && "border-none shadow-none rounded-none")}>
       {/* Header */}
-      <div className="px-5 py-4 border-b border-[#E6E9EF] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-[#FDEBDC]">
-            <MessageSquare className="h-4 w-4 text-[#E07239]" />
+      {!isEmbedded && (
+        <div className="px-5 py-4 border-b border-[#E6E9EF] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-[#FDEBDC]">
+              <MessageSquare className="h-4 w-4 text-[#E07239]" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-[#323338]">הערות</h3>
+              <p className="text-xs text-[#9B9BAD]">{notes.length} הערות</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-[#323338]">הערות</h3>
-            <p className="text-xs text-[#9B9BAD]">{notes.length} הערות</p>
-          </div>
+          {!isAdding && (
+            <button
+              onClick={() => setIsAdding(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00A0B0] text-white text-sm hover:bg-[#008A99] transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              הוסף הערה
+            </button>
+          )}
         </div>
-        {!isAdding && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00A0B0] text-white text-sm hover:bg-[#008A99] transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            הוסף הערה
-          </button>
-        )}
-      </div>
+      )}
 
       {/* Content */}
-      <div className="p-5 space-y-4">
+      <div className={cn("p-5 space-y-4", isEmbedded && "p-3")}>
+        {/* Add note button for embedded mode */}
+        {isEmbedded && !isAdding && (
+          <button
+            onClick={() => setIsAdding(true)}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-[#E6E9EF] text-[#676879] text-sm hover:bg-[#F5F6F8] hover:border-[#00A0B0] hover:text-[#00A0B0] transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            הוסף הערה חדשה
+          </button>
+        )}
         {/* Add note form */}
         {isAdding && (
           <div className="p-4 rounded-lg bg-[#F5F6F8] border border-[#E6E9EF]">

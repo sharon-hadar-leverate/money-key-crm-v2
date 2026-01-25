@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Bell, Search, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useEffect, useState, ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { getInitials } from '@/lib/utils'
 

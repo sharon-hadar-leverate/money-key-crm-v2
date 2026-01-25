@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { StatusBadge } from './status-badge'
 import { Timeline } from './timeline'
-import { NotesSection } from './notes-section'
 import { PlaybookPanel } from '@/components/playbooks'
 import { formatDate, formatCurrency, getInitials } from '@/lib/utils'
 import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent, MessageSquare, Copy, Check, ChevronDown, Search, FileText, Plus } from 'lucide-react'

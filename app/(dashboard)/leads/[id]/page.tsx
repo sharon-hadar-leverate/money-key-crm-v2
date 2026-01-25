@@ -1,11 +1,9 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { Header } from '@/components/layout/header'
 import { LeadDetail } from '@/components/leads/lead-detail'
 import { getLeadWithEvents, markLeadAsSeen } from '@/actions/leads'
 import { getNotes } from '@/actions/notes'
 import { getPlaybooks, getPlaybookForLead, getDefaultPlaybook } from '@/actions/playbooks'
-import { ArrowRight } from 'lucide-react'
 
 interface LeadPageProps {
   params: Promise<{ id: string }>

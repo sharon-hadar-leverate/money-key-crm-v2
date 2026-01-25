@@ -453,8 +453,8 @@ export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, n
                           {lead.is_new && (
                             <span className="inline-flex h-2 w-2 rounded-full bg-[#0073EA]" />
                           )}
-                          {(Boolean((lead.custom_fields as Record<string, unknown> | null)?.zoho_notes) || (noteCounts[lead.id] ?? 0) > 0) && (
-                            <span title="יש הערות" className="text-[#E07239]">
+                          {(noteCounts[lead.id] ?? 0) > 0 && (
+                            <span title={`${noteCounts[lead.id]} הערות`} className="text-[#E07239]">
                               <MessageSquare className="h-3.5 w-3.5" />
                             </span>
                           )}

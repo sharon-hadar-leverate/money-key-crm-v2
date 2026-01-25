@@ -34,17 +34,8 @@ export default async function LeadPage({ params }: LeadPageProps) {
 
   return (
     <>
-      <Header title={result.lead.name} subtitle="פרטי ליד" />
+      <Header title={result.lead.name} subtitle="פרטי ליד" backHref="/leads" />
       <div className="p-6">
-        <div className="mb-6">
-          <Link
-            href="/leads"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-[#E6E9EF] text-[#676879] hover:text-[#323338] hover:border-[#00A0B0] transition-all text-sm"
-          >
-            <ArrowRight className="h-4 w-4" />
-            חזרה ללידים
-          </Link>
-        </div>
         <LeadDetail
           lead={result.lead}
           events={result.events}

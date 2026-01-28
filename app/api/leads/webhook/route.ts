@@ -91,7 +91,7 @@ export async function POST(request: Request) {
         referrer: body.referrer,
         ip_address: body.ip_address || request.headers.get('x-forwarded-for'),
         user_agent: body.user_agent || request.headers.get('user-agent'),
-        status: 'new',
+        status: 'not_contacted',
         is_new: true,
       })
       .select()

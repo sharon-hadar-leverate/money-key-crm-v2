@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { StatusBadge } from './status-badge'
 import { Timeline } from './timeline'
-import { PlaybookPanel } from '@/components/playbooks'
+import { PlaybookPanel, PlaybookMobileSheet } from '@/components/playbooks'
 import { formatDate, formatCurrency, getInitials } from '@/lib/utils'
 import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent, MessageSquare, Copy, Check, ChevronDown, Search, FileText, Plus } from 'lucide-react'
 import { updateLead, updateLeadStatus } from '@/actions/leads'
@@ -92,17 +92,14 @@ function StatusSelector({
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isChanging, setIsChanging] = useState(false)
-  const [activeTab, setActiveTab] = useState<PipelineStage | null>(null)
 
   const currentStatus = lead.status as LeadStatus
   const currentStage = getStatusPipelineStage(currentStatus)
   const quickActions = getQuickActions(currentStatus)
 
-  // Set active tab to current stage when opening
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen)
     if (isOpen) {
-      setActiveTab(null) // Start with "all" view
       setSearchQuery('')
     }
   }
@@ -118,41 +115,16 @@ function StatusSelector({
     }
   }
 
-  // Pipeline stage tabs for the popover
-  const stageTabs: { key: PipelineStage | null; label: string }[] = [
-    { key: null, label: 'הכל' },
-    { key: 'follow_up', label: 'מעקב' },
-    { key: 'warm', label: 'חמים' },
-    { key: 'hot', label: 'חמים מאוד' },
-    { key: 'signed', label: 'לקוחות' },
-    { key: 'lost', label: 'אבודים' },
-    { key: 'future', label: 'עתידי' },
-  ]
-
-  // Get statuses to display based on active tab and search (filters out hidden statuses)
+  // Get statuses to display (filters out hidden statuses)
   const getFilteredStatuses = () => {
-    if (searchQuery) {
-      // When searching, search across all visible statuses
-      return Object.entries(PIPELINE_STAGES).flatMap(([stage, statuses]) =>
-        getVisibleStatuses(statuses as readonly LeadStatus[]).filter((status) => {
-          const label = STATUS_CONFIG[status]?.label || status
-          const stageLabel = PIPELINE_LABELS[stage as PipelineStage]
-          return label.includes(searchQuery) || stageLabel.includes(searchQuery)
-        }).map(status => ({ status, stage: stage as PipelineStage }))
-      )
-    }
-
-    if (activeTab) {
-      // When tab is selected, show only visible statuses for that stage
-      const stageStatuses = PIPELINE_STAGES[activeTab]
-      return getVisibleStatuses(stageStatuses as readonly LeadStatus[]).map(status => ({
-        status,
-        stage: activeTab
-      }))
-    }
-
-    // Default: show all grouped by stage
-    return null
+    return Object.entries(PIPELINE_STAGES).flatMap(([stage, statuses]) =>
+      getVisibleStatuses(statuses as readonly LeadStatus[]).filter((status) => {
+        if (!searchQuery) return true
+        const label = STATUS_CONFIG[status]?.label || status
+        const stageLabel = PIPELINE_LABELS[stage as PipelineStage]
+        return label.includes(searchQuery) || stageLabel.includes(searchQuery)
+      }).map(status => ({ status, stage: stage as PipelineStage }))
+    )
   }
 
   const filteredStatuses = getFilteredStatuses()
@@ -241,102 +213,36 @@ function StatusSelector({
                 </div>
               </div>
 
-              {/* Tabs - Only show when not searching */}
-              {!searchQuery && (
-                <div className="flex gap-1 p-2 border-b border-[#E6E9EF] bg-[#F9FAFB] overflow-x-auto">
-                  {stageTabs.map((tab) => (
-                    <button
-                      key={tab.key || 'all'}
-                      onClick={() => setActiveTab(tab.key)}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all",
-                        activeTab === tab.key
-                          ? "bg-[#00A0B0] text-white"
-                          : tab.key === currentStage
-                          ? "bg-[#E5F6F7] text-[#00A0B0] hover:bg-[#D4F4F7]"
-                          : "text-[#676879] hover:bg-[#ECEDF0]"
-                      )}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               {/* Status List */}
-              <div className="max-h-80 overflow-y-auto">
-                {filteredStatuses ? (
-                  // Flat list (when tab is selected or searching)
-                  <div className="p-1">
-                    {filteredStatuses.length === 0 ? (
-                      <div className="px-3 py-4 text-center text-sm text-[#9B9BAD]">
-                        לא נמצאו תוצאות
-                      </div>
-                    ) : (
-                      filteredStatuses.map(({ status, stage }) => (
-                        <button
-                          key={status}
-                          onClick={() => handleSelect(status)}
-                          disabled={currentStatus === status}
-                          className={cn(
-                            "w-full px-3 py-2.5 flex items-center justify-between rounded-lg transition-colors",
-                            currentStatus === status
-                              ? "bg-[#E5F6F7] cursor-default"
-                              : "hover:bg-[#F5F6F8]"
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <StatusBadge status={status} size="sm" />
-                            {searchQuery && (
-                              <span className="text-[10px] text-[#9B9BAD]">
-                                {PIPELINE_LABELS[stage]}
-                              </span>
-                            )}
-                          </div>
-                          {currentStatus === status && (
-                            <Check className="h-4 w-4 text-[#00A0B0]" />
-                          )}
-                        </button>
-                      ))
-                    )}
+              <div className="max-h-80 overflow-y-auto p-1">
+                {filteredStatuses.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-sm text-[#9B9BAD]">
+                    לא נמצאו תוצאות
                   </div>
                 ) : (
-                  // Grouped by stage (default view) - only visible statuses
-                  (Object.entries(PIPELINE_STAGES) as [PipelineStage, readonly LeadStatus[]][]).map(([stage, statuses]) => {
-                    const visibleStatuses = getVisibleStatuses(statuses)
-                    if (visibleStatuses.length === 0) return null
+                  filteredStatuses.map(({ status }) => {
+                    const config = STATUS_CONFIG[status]
                     return (
-                      <div key={stage}>
-                        <div className={cn(
-                          "px-3 py-2 text-xs font-semibold sticky top-0 flex items-center gap-2",
-                          stage === currentStage
-                            ? "bg-[#E5F6F7] text-[#00A0B0]"
-                            : "bg-[#F5F6F8] text-[#676879]"
-                        )}>
-                          <span>{PIPELINE_LABELS[stage]}</span>
-                          {stage === currentStage && (
-                            <span className="text-[10px] font-normal">(נוכחי)</span>
-                          )}
-                        </div>
-                        {visibleStatuses.map((status) => (
-                          <button
-                            key={status}
-                            onClick={() => handleSelect(status)}
-                            disabled={currentStatus === status}
-                            className={cn(
-                              "w-full px-3 py-2.5 flex items-center justify-between transition-colors",
-                              currentStatus === status
-                                ? "bg-[#E5F6F7] cursor-default"
-                                : "hover:bg-[#F5F6F8]"
-                            )}
-                          >
-                            <StatusBadge status={status} size="sm" />
-                            {currentStatus === status && (
-                              <Check className="h-4 w-4 text-[#00A0B0]" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                      <button
+                        key={status}
+                        onClick={() => handleSelect(status)}
+                        disabled={currentStatus === status}
+                        className={cn(
+                          "w-full px-3 py-2 flex items-center gap-3 rounded-lg transition-colors",
+                          currentStatus === status
+                            ? "bg-[#E5F6F7] cursor-default"
+                            : "hover:bg-[#F5F6F8]"
+                        )}
+                      >
+                        <span className={cn(
+                          "w-2.5 h-2.5 rounded-full shrink-0",
+                          config?.bgColor || "bg-gray-300"
+                        )} />
+                        <span className="text-sm text-[#323338] flex-1 text-right">{config?.label || status}</span>
+                        {currentStatus === status && (
+                          <Check className="h-4 w-4 text-[#00A0B0]" />
+                        )}
+                      </button>
                     )
                   })
                 )}
@@ -800,8 +706,18 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
         )}
       </div>
 
-      {/* Playbook Panel - Left Side (RTL) */}
+      {/* Playbook Panel - Left Side (RTL) - Desktop only */}
       <PlaybookPanel
+        leadId={lead.id}
+        playbooks={playbooks}
+        currentPlaybook={currentPlaybook}
+        currentPlaybookId={lead.playbook_id ?? null}
+        defaultPlaybookId={defaultPlaybookId}
+        initialNotes={notes}
+      />
+
+      {/* Mobile FAB + Bottom Sheet */}
+      <PlaybookMobileSheet
         leadId={lead.id}
         playbooks={playbooks}
         currentPlaybook={currentPlaybook}

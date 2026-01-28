@@ -1,24 +1,21 @@
 import type { LeadStatus } from '@/types/leads'
 
 /**
- * Hidden/Deprecated Statuses
+ * Hidden Statuses
  *
- * These statuses exist in the database but should not be shown as options
- * for new selections (quick actions, dropdowns, etc.)
- * They can still be displayed if a lead already has this status.
+ * These statuses should not be shown as options for new selections
+ * (quick actions, dropdowns, etc.) but can still be displayed
+ * if a lead already has this status.
  */
 export const HIDDEN_STATUSES: LeadStatus[] = [
-  'new',              // חדש
-  'not_contacted',    // טרם יצרנו קשר
-  'contacted',        // נוצר קשר
-  'pending_agreement', // בהמתנה להסכם
-  'customer',         // לקוח
-  'lost',             // אבוד
-  'future_interest',  // מעוניין בעתיד
+  'not_contacted',    // טרם יצרנו קשר - initial state, don't offer as action
+  'contacted',        // נוצר קשר - intermediate, prefer more specific
+  'pending_agreement', // בהמתנה להסכם - intermediate
+  'future_interest',  // מעוניין בעתיד - rarely selected manually
 ]
 
 /**
- * Check if a status is hidden/deprecated
+ * Check if a status is hidden
  */
 export function isHiddenStatus(status: LeadStatus): boolean {
   return HIDDEN_STATUSES.includes(status)
@@ -29,44 +26,42 @@ export function isHiddenStatus(status: LeadStatus): boolean {
  *
  * Edit this file to change which statuses appear as "quick actions"
  * for each status in the lead detail page.
+ *
+ * Canonical 14 statuses
  */
 export const STATUS_FLOW: Record<LeadStatus, LeadStatus[]> = {
-  // === INITIAL CONTACT ===
-  'new': ['contacted', 'no_answer', 'not_relevant'],
-  'before_contact': ['contacted', 'no_answer', 'not_relevant'],
+  // === FOLLOW-UP ===
   'not_contacted': ['contacted', 'no_answer', 'not_relevant'],
-
-  // === FOLLOW UP ===
   'no_answer': ['contacted', 'message_sent', 'not_relevant', 'future_interest'],
+
+  // === WARM ===
   'contacted': ['meeting_set', 'message_sent', 'pending_agreement', 'not_relevant'],
   'message_sent': ['contacted', 'meeting_set', 'no_answer', 'future_interest'],
 
-  // === ADVANCING ===
-  'meeting_set': ['pending_agreement', 'agreement_sent', 'not_relevant', 'closed_elsewhere'],
-  'pending_agreement': ['agreement_sent', 'signed', 'not_relevant'],
-  'agreement_sent': ['signed', 'customer', 'pending_agreement', 'closed_elsewhere'],
+  // === HOT ===
+  'meeting_set': ['pending_agreement', 'signed', 'not_relevant', 'closed_elsewhere'],
+  'pending_agreement': ['signed', 'not_relevant', 'closed_elsewhere'],
 
-  // === ACTIVE CUSTOMERS ===
-  'signed': ['customer', 'under_review', 'missing_document'],
-  'customer': ['under_review', 'report_submitted', 'missing_document', 'completed'],
+  // === SIGNED (active customers) ===
+  'signed': ['under_review', 'report_submitted', 'missing_document', 'completed'],
   'under_review': ['report_submitted', 'missing_document', 'completed'],
   'report_submitted': ['completed', 'missing_document'],
   'missing_document': ['under_review', 'report_submitted', 'completed'],
-  'completed': ['customer'],
+  'completed': ['signed'],
 
-  // === LOST/FUTURE ===
-  'lost': ['new', 'contacted', 'future_interest'],
-  'not_relevant': ['new', 'future_interest'],
-  'closed_elsewhere': ['new', 'future_interest'],
-  'future_interest': ['contacted', 'new'],
-  'relevant_next_year': ['contacted', 'new', 'future_interest'],
+  // === LOST ===
+  'not_relevant': ['not_contacted', 'future_interest'],
+  'closed_elsewhere': ['not_contacted', 'future_interest'],
+
+  // === FUTURE ===
+  'future_interest': ['contacted', 'not_contacted'],
 }
 
 /**
  * Get quick actions for a status (filters out hidden statuses)
  */
 export function getQuickActions(currentStatus: LeadStatus | null): LeadStatus[] {
-  const status = currentStatus || 'new'
+  const status = currentStatus || 'not_contacted'
   const actions = STATUS_FLOW[status] || []
   return actions.filter(s => !HIDDEN_STATUSES.includes(s))
 }

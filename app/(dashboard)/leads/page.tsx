@@ -4,16 +4,21 @@ import { getLeads } from '@/actions/leads'
 import { getNoteCountsForLeads } from '@/actions/notes'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
-import type { PipelineStage } from '@/types/leads'
+import type { PipelineStage, LeadStatus } from '@/types/leads'
 
 interface LeadsPageProps {
-  searchParams: Promise<{ stage?: string }>
+  searchParams: Promise<{ stage?: string; statuses?: string }>
 }
 
 export default async function LeadsPage({ searchParams }: LeadsPageProps) {
   const params = await searchParams
   const { data: leads, count } = await getLeads({ limit: 100 })
   const initialStage = params.stage as PipelineStage | undefined
+
+  // Parse statuses from query param (comma-separated)
+  const initialStatuses = params.statuses
+    ? (params.statuses.split(',') as LeadStatus[])
+    : undefined
 
   // Fetch note counts for all leads in parallel with efficient batch query
   const leadIds = leads.map(lead => lead.id)
@@ -43,6 +48,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
           leads={leads}
           totalCount={count}
           initialStage={initialStage}
+          initialStatuses={initialStatuses}
           noteCounts={noteCounts}
         />
       </div>

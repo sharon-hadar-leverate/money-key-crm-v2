@@ -9,43 +9,39 @@ export type LeadEvent = Database['public']['Tables']['lead_events']['Row']
 export type LeadEventInsert = Database['public']['Tables']['lead_events']['Insert']
 
 // Application-level enums and types
-// Full status list: 4 original + 9 from Zoho + 4 operational + 3 new Zoho = 20 total
+// Canonical 14 statuses
 export const LEAD_STATUSES = [
-  // Original statuses
-  'new',
-  'contacted',
-  'customer',
-  'lost',
-  // Zoho statuses
-  'signed',
-  'meeting_set',
-  'pending_agreement',
-  'message_sent',
-  'no_answer',
-  'not_contacted',
-  'not_relevant',
-  'closed_elsewhere',
-  'future_interest',
-  // New operational statuses (sub-stages of signed)
-  'under_review',       // בבדיקה
-  'report_submitted',   // הוגש דוח
-  'missing_document',   // חסר מסמך
-  'completed',          // הושלם
-  // New Zoho status mappings (discovered in data)
-  'before_contact',     // לפני תיקשרות
-  'agreement_sent',     // נשלח הסכם התקשרות
-  'relevant_next_year', // רלוונטי לשנה הבאה
+  // Follow-up stage
+  'not_contacted',    // טרם יצרנו קשר
+  'no_answer',        // אין מענה
+  // Warm stage
+  'contacted',        // נוצר קשר
+  'message_sent',     // נשלחה הודעה
+  // Hot stage
+  'meeting_set',      // נקבעה שיחה
+  'pending_agreement', // בהמתנה להסכם
+  // Signed stage (active customers)
+  'signed',           // חתם על הסכם התקשרות
+  'under_review',     // בבדיקה
+  'report_submitted', // הוגש דוח
+  'missing_document', // חסר מסמך
+  'completed',        // הושלם
+  // Lost stage
+  'not_relevant',     // לא רלוונטי
+  'closed_elsewhere', // סגר במקום אחר
+  // Future stage
+  'future_interest',  // מעוניין בעתיד
 ] as const
 export type LeadStatus = typeof LEAD_STATUSES[number]
 
 // Pipeline stages for grouping statuses
 export const PIPELINE_STAGES = {
-  follow_up: ['new', 'no_answer', 'not_contacted', 'before_contact'],
+  follow_up: ['not_contacted', 'no_answer'],
   warm: ['contacted', 'message_sent'],
-  hot: ['meeting_set', 'pending_agreement', 'agreement_sent'],
-  signed: ['customer', 'signed', 'under_review', 'report_submitted', 'missing_document', 'completed'],
-  lost: ['lost', 'not_relevant', 'closed_elsewhere'],
-  future: ['future_interest', 'relevant_next_year'],
+  hot: ['meeting_set', 'pending_agreement'],
+  signed: ['signed', 'under_review', 'report_submitted', 'missing_document', 'completed'],
+  lost: ['not_relevant', 'closed_elsewhere'],
+  future: ['future_interest'],
 } as const
 export type PipelineStage = keyof typeof PIPELINE_STAGES
 
@@ -71,15 +67,24 @@ export const STATUS_CONFIG: Record<LeadStatus, {
   cssClass: string
   pipelineStage: PipelineStage
 }> = {
-  // === Original statuses ===
-  new: {
-    label: 'חדש',
+  // === Follow-up statuses ===
+  not_contacted: {
+    label: 'טרם יצרנו קשר',
     color: 'text-[#0073EA]',
     bgColor: 'bg-[#CCE5FF]',
     borderColor: 'border-transparent',
-    cssClass: 'status-new',
+    cssClass: 'status-not-contacted',
     pipelineStage: 'follow_up'
   },
+  no_answer: {
+    label: 'אין מענה',
+    color: 'text-[#676879]',
+    bgColor: 'bg-[#F5F6F8]',
+    borderColor: 'border-[#E6E9EF]',
+    cssClass: 'status-no-answer',
+    pipelineStage: 'follow_up'
+  },
+  // === Warm statuses ===
   contacted: {
     label: 'נוצר קשר',
     color: 'text-[#D17A00]',
@@ -88,31 +93,15 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     cssClass: 'status-contacted',
     pipelineStage: 'warm'
   },
-  customer: {
-    label: 'לקוח',
-    color: 'text-[#00854D]',
-    bgColor: 'bg-[#D4F4DD]',
+  message_sent: {
+    label: 'נשלחה הודעה',
+    color: 'text-[#D17A00]',
+    bgColor: 'bg-[#FFF0D6]',
     borderColor: 'border-transparent',
-    cssClass: 'status-customer',
-    pipelineStage: 'signed'
+    cssClass: 'status-message-sent',
+    pipelineStage: 'warm'
   },
-  lost: {
-    label: 'אבוד',
-    color: 'text-[#D83A52]',
-    bgColor: 'bg-[#FFD6D9]',
-    borderColor: 'border-transparent',
-    cssClass: 'status-lost',
-    pipelineStage: 'lost'
-  },
-  // === Zoho statuses ===
-  signed: {
-    label: 'חתם על הסכם התקשרות',
-    color: 'text-[#00854D]',
-    bgColor: 'bg-[#D4F4DD]',
-    borderColor: 'border-transparent',
-    cssClass: 'status-signed',
-    pipelineStage: 'signed'
-  },
+  // === Hot statuses ===
   meeting_set: {
     label: 'נקבעה שיחה',
     color: 'text-[#D93D42]',
@@ -123,36 +112,54 @@ export const STATUS_CONFIG: Record<LeadStatus, {
   },
   pending_agreement: {
     label: 'בהמתנה להסכם',
-    color: 'text-[#D93D42]',
-    bgColor: 'bg-[#FFF5F0]',
-    borderColor: 'border-[#D93D4233]',
-    cssClass: 'status-pending-agreement',
-    pipelineStage: 'hot'
-  },
-  message_sent: {
-    label: 'נשלחה הודעה',
     color: 'text-[#D17A00]',
     bgColor: 'bg-[#FFF0D6]',
     borderColor: 'border-transparent',
-    cssClass: 'status-message-sent',
-    pipelineStage: 'warm'
+    cssClass: 'status-pending-agreement',
+    pipelineStage: 'hot'
   },
-  no_answer: {
-    label: 'אין מענה',
-    color: 'text-[#676879]',
-    bgColor: 'bg-[#F5F6F8]',
-    borderColor: 'border-[#E6E9EF]',
-    cssClass: 'status-no-answer',
-    pipelineStage: 'follow_up'
-  },
-  not_contacted: {
-    label: 'טרם יצרנו קשר',
-    color: 'text-[#0073EA]',
-    bgColor: 'bg-[#CCE5FF]',
+  // === Signed statuses (active customers) ===
+  signed: {
+    label: 'חתם על הסכם התקשרות',
+    color: 'text-[#00854D]',
+    bgColor: 'bg-[#D4F4DD]',
     borderColor: 'border-transparent',
-    cssClass: 'status-not-contacted',
-    pipelineStage: 'follow_up'
+    cssClass: 'status-signed',
+    pipelineStage: 'signed'
   },
+  under_review: {
+    label: 'בבדיקה',
+    color: 'text-[#00854D]',
+    bgColor: 'bg-[#D4F4DD]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-under-review',
+    pipelineStage: 'signed'
+  },
+  report_submitted: {
+    label: 'הוגש דוח',
+    color: 'text-[#00854D]',
+    bgColor: 'bg-[#D4F4DD]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-report-submitted',
+    pipelineStage: 'signed'
+  },
+  missing_document: {
+    label: 'חסר מסמך',
+    color: 'text-[#00854D]',
+    bgColor: 'bg-[#D4F4DD]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-missing-document',
+    pipelineStage: 'signed'
+  },
+  completed: {
+    label: 'הושלם',
+    color: 'text-[#00854D]',
+    bgColor: 'bg-[#D4F4DD]',
+    borderColor: 'border-[#00854D33]',
+    cssClass: 'status-completed',
+    pipelineStage: 'signed'
+  },
+  // === Lost statuses ===
   not_relevant: {
     label: 'לא רלוונטי',
     color: 'text-[#D83A52]',
@@ -169,6 +176,7 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     cssClass: 'status-closed-elsewhere',
     pipelineStage: 'lost'
   },
+  // === Future status ===
   future_interest: {
     label: 'מעוניין בעתיד',
     color: 'text-[#00A0B0]',
@@ -177,64 +185,6 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     cssClass: 'status-future-interest',
     pipelineStage: 'future'
   },
-  // === New Operational Statuses (sub-stages of signed) ===
-  under_review: {
-    label: 'בבדיקה',
-    color: 'text-[#D17A00]',
-    bgColor: 'bg-[#FFF0D6]',
-    borderColor: 'border-transparent',
-    cssClass: 'status-under-review',
-    pipelineStage: 'signed'
-  },
-  report_submitted: {
-    label: 'הוגש דוח',
-    color: 'text-[#00854D]',
-    bgColor: 'bg-[#D4F4DD]',
-    borderColor: 'border-transparent',
-    cssClass: 'status-report-submitted',
-    pipelineStage: 'signed'
-  },
-  missing_document: {
-    label: 'חסר מסמך',
-    color: 'text-[#D93D42]',
-    bgColor: 'bg-[#FFEBE6]',
-    borderColor: 'border-transparent',
-    cssClass: 'status-missing-document',
-    pipelineStage: 'signed'
-  },
-  completed: {
-    label: 'הושלם',
-    color: 'text-[#00854D]',
-    bgColor: 'bg-[#D4F4DD]',
-    borderColor: 'border-[#00854D33]',
-    cssClass: 'status-completed',
-    pipelineStage: 'signed'
-  },
-  // === New Zoho Status Mappings ===
-  before_contact: {
-    label: 'לפני תיקשרות',
-    color: 'text-[#0073EA]',
-    bgColor: 'bg-[#CCE5FF]',
-    borderColor: 'border-transparent',
-    cssClass: 'status-before-contact',
-    pipelineStage: 'follow_up'
-  },
-  agreement_sent: {
-    label: 'נשלח הסכם התקשרות',
-    color: 'text-[#D93D42]',
-    bgColor: 'bg-[#FFF5F0]',
-    borderColor: 'border-[#D93D4233]',
-    cssClass: 'status-agreement-sent',
-    pipelineStage: 'hot'
-  },
-  relevant_next_year: {
-    label: 'רלוונטי לשנה הבאה',
-    color: 'text-[#00A0B0]',
-    bgColor: 'bg-[#D4F4F7]',
-    borderColor: 'border-transparent',
-    cssClass: 'status-relevant-next-year',
-    pipelineStage: 'future'
-  }
 }
 
 // Event type configuration with Hebrew labels (Monday.com Light Theme)
@@ -351,30 +301,21 @@ export interface UTMPerformance {
 
 export interface TimeSeriesData {
   date: string
-  // Original statuses
-  new: number
+  // Canonical 14 statuses
+  not_contacted: number
+  no_answer: number
   contacted: number
-  customer: number
-  lost: number
-  // Zoho statuses
-  signed: number
+  message_sent: number
   meeting_set: number
   pending_agreement: number
-  message_sent: number
-  no_answer: number
-  not_contacted: number
-  not_relevant: number
-  closed_elsewhere: number
-  future_interest: number
-  // New operational statuses
+  signed: number
   under_review: number
   report_submitted: number
   missing_document: number
   completed: number
-  // New Zoho status mappings
-  before_contact: number
-  agreement_sent: number
-  relevant_next_year: number
+  not_relevant: number
+  closed_elsewhere: number
+  future_interest: number
 }
 
 export interface ConversionFunnelItem {

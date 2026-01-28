@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
-import { BookOpen, ChevronLeft, ChevronRight, RefreshCw, MessageSquare } from 'lucide-react'
+import { BookOpen, MessageSquare, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PlaybookViewer } from './playbook-viewer'
 import { PlaybookSelector } from './playbook-selector'
@@ -10,8 +10,14 @@ import { toast } from 'sonner'
 import type { Playbook } from '@/types/playbooks'
 import type { NoteWithUser } from '@/actions/notes'
 import { NotesSection } from '../leads/notes-section'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 
-interface PlaybookPanelProps {
+interface PlaybookMobileSheetProps {
   leadId: string
   playbooks: Playbook[]
   currentPlaybook: Playbook | null
@@ -20,16 +26,16 @@ interface PlaybookPanelProps {
   initialNotes?: NoteWithUser[]
 }
 
-export function PlaybookPanel({
+export function PlaybookMobileSheet({
   leadId,
   playbooks,
   currentPlaybook,
   currentPlaybookId,
   defaultPlaybookId,
   initialNotes = [],
-}: PlaybookPanelProps) {
-  const [isCollapsed, setIsCollapsed] = useState(initialNotes.length === 0)
-  const [activeTab, setActiveTab] = useState<'playbook' | 'notes'>(initialNotes.length > 0 ? 'notes' : 'playbook')
+}: PlaybookMobileSheetProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<'playbook' | 'notes'>('notes')
   const [selectedId, setSelectedId] = useState<string | null>(currentPlaybookId)
   const [displayedPlaybook, setDisplayedPlaybook] = useState<Playbook | null>(currentPlaybook)
   const [isPending, startTransition] = useTransition()
@@ -40,7 +46,6 @@ export function PlaybookPanel({
       const playbook = playbooks.find(p => p.id === selectedId)
       if (playbook) setDisplayedPlaybook(playbook)
     } else {
-      // Fall back to default
       const defaultPlaybook = playbooks.find(p => p.id === defaultPlaybookId)
       setDisplayedPlaybook(defaultPlaybook || null)
     }
@@ -53,76 +58,97 @@ export function PlaybookPanel({
       const result = await setLeadPlaybook(leadId, playbookId)
       if (!result.success) {
         toast.error('שגיאה בשמירת ההדרכה')
-        // Revert on error
         setSelectedId(currentPlaybookId)
       }
     })
   }
 
+  const openWithTab = (tab: 'playbook' | 'notes') => {
+    setActiveTab(tab)
+    setIsOpen(true)
+  }
+
   return (
-    <div
-      className={cn(
-        'transition-all duration-300 ease-out shrink-0 hidden md:block',
-        isCollapsed ? 'w-12' : 'w-80'
-      )}
-    >
-      <div className="monday-card h-full overflow-hidden flex flex-col">
-        {/* Header/Tabs */}
-        <div className="border-b border-[#E6E9EF] bg-[#F9FAFB]">
-          <div className="px-2 pt-2 flex items-center justify-between">
-            {!isCollapsed ? (
-              <div className="flex gap-1">
+    <>
+      {/* FAB - Only visible on mobile */}
+      <div className="fixed bottom-6 left-6 z-40 flex flex-col gap-2 md:hidden">
+        <button
+          onClick={() => openWithTab('notes')}
+          className={cn(
+            "p-3 rounded-full shadow-lg transition-all",
+            "bg-[#FDEBDC] hover:bg-[#FDEBDC]/90 active:scale-95",
+            initialNotes.length > 0 && "ring-2 ring-[#E07239] ring-offset-2"
+          )}
+          aria-label="הערות"
+        >
+          <MessageSquare className="h-5 w-5 text-[#E07239]" />
+        </button>
+        <button
+          onClick={() => openWithTab('playbook')}
+          className={cn(
+            "p-3 rounded-full shadow-lg transition-all",
+            "bg-[#E5F6F7] hover:bg-[#E5F6F7]/90 active:scale-95"
+          )}
+          aria-label="הדרכה"
+        >
+          <BookOpen className="h-5 w-5 text-[#00A0B0]" />
+        </button>
+      </div>
+
+      {/* Bottom Sheet */}
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetContent 
+          side="bottom" 
+          className="h-[75vh] rounded-t-2xl p-0 flex flex-col"
+        >
+          {/* Custom Header with Tabs */}
+          <SheetHeader className="border-b border-[#E6E9EF] bg-[#F9FAFB] rounded-t-2xl p-0">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setActiveTab('notes')}
                   className={cn(
-                    "px-3 py-2 text-xs font-medium rounded-t-lg transition-all flex items-center gap-2",
+                    "px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2",
                     activeTab === 'notes'
-                      ? "bg-white border-x border-t border-[#E6E9EF] text-[#00A0B0]"
+                      ? "bg-white shadow-sm text-[#00A0B0] border border-[#E6E9EF]"
                       : "text-[#676879] hover:bg-[#E6E9EF]/50"
                   )}
                 >
-                  <MessageSquare className="h-3.5 w-3.5" />
+                  <MessageSquare className="h-4 w-4" />
                   הערות
                 </button>
                 <button
                   onClick={() => setActiveTab('playbook')}
                   className={cn(
-                    "px-3 py-2 text-xs font-medium rounded-t-lg transition-all flex items-center gap-2",
+                    "px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2",
                     activeTab === 'playbook'
-                      ? "bg-white border-x border-t border-[#E6E9EF] text-[#00A0B0]"
+                      ? "bg-white shadow-sm text-[#00A0B0] border border-[#E6E9EF]"
                       : "text-[#676879] hover:bg-[#E6E9EF]/50"
                   )}
                 >
-                  <BookOpen className="h-3.5 w-3.5" />
+                  <BookOpen className="h-4 w-4" />
                   הדרכה
                 </button>
               </div>
-            ) : (
-              <div className="w-full flex justify-center py-2">
-                {isPending && <RefreshCw className="h-3.5 w-3.5 text-[#9B9BAD] animate-spin" />}
-              </div>
-            )}
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1.5 mb-1 rounded-lg hover:bg-[#E6E9EF] transition-colors"
-              title={isCollapsed ? 'הרחב' : 'צמצם'}
-            >
-              {isCollapsed ? (
-                <ChevronRight className="h-4 w-4 text-[#676879]" />
-              ) : (
-                <ChevronLeft className="h-4 w-4 text-[#676879]" />
-              )}
-            </button>
-          </div>
-        </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 rounded-lg hover:bg-[#E6E9EF] transition-colors"
+              >
+                <X className="h-5 w-5 text-[#676879]" />
+              </button>
+            </div>
+            {/* Hidden title for accessibility */}
+            <SheetTitle className="sr-only">
+              {activeTab === 'notes' ? 'הערות' : 'הדרכה'}
+            </SheetTitle>
+          </SheetHeader>
 
-        {/* Content */}
-        {!isCollapsed && (
-          <div className="flex-1 flex flex-col min-h-0 bg-white">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto bg-white">
             {activeTab === 'playbook' ? (
-              <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex flex-col h-full">
                 {/* Selector */}
-                <div className="p-3 border-b border-[#E6E9EF]">
+                <div className="p-4 border-b border-[#E6E9EF]">
                   <PlaybookSelector
                     playbooks={playbooks}
                     selectedId={selectedId}
@@ -148,36 +174,11 @@ export function PlaybookPanel({
                 </div>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto">
-                <NotesSection leadId={leadId} initialNotes={initialNotes} isEmbedded />
-              </div>
+              <NotesSection leadId={leadId} initialNotes={initialNotes} isEmbedded />
             )}
           </div>
-        )}
-
-        {/* Collapsed State Icon & Label */}
-        {isCollapsed && (
-          <div className="flex-1 flex flex-col items-center py-4 gap-4">
-            <button 
-              onClick={() => { setIsCollapsed(false); setActiveTab('notes'); }}
-              className="p-2 rounded-lg bg-[#FDEBDC] hover:bg-[#FDEBDC]/80 transition-colors"
-            >
-              <MessageSquare className="h-5 w-5 text-[#E07239]" />
-            </button>
-            <button 
-              onClick={() => { setIsCollapsed(false); setActiveTab('playbook'); }}
-              className="p-2 rounded-lg bg-[#E5F6F7] hover:bg-[#E5F6F7]/80 transition-colors"
-            >
-              <BookOpen className="h-5 w-5 text-[#00A0B0]" />
-            </button>
-            <div className="flex flex-col items-center gap-1 [writing-mode:vertical-rl] rotate-180 mt-2">
-              <span className="text-[10px] font-bold text-[#323338] tracking-widest uppercase opacity-50">
-                {activeTab === 'notes' ? 'הערות' : 'הדרכה'}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }

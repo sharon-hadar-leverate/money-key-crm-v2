@@ -139,21 +139,6 @@ export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, n
     setStatusFilter(newFilter)
   }
 
-  const toggleStage = (stage: PipelineStage) => {
-    const stageStatuses = PIPELINE_STAGES[stage] as unknown as LeadStatus[]
-    const allSelected = stageStatuses.every(s => statusFilter.has(s))
-
-    const newFilter = new Set(statusFilter)
-    if (allSelected) {
-      // Remove all statuses from this stage
-      stageStatuses.forEach(s => newFilter.delete(s))
-    } else {
-      // Add all statuses from this stage
-      stageStatuses.forEach(s => newFilter.add(s))
-    }
-    setStatusFilter(newFilter)
-  }
-
   const clearStatusFilter = () => {
     setStatusFilter(new Set())
   }
@@ -298,66 +283,37 @@ export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, n
                 )}
               </div>
 
-              {/* Status list grouped by pipeline stage */}
-              <div className="max-h-80 overflow-y-auto">
-                {(Object.entries(PIPELINE_STAGES) as [PipelineStage, readonly LeadStatus[]][]).map(([stage, statuses]) => {
-                  const filteredStatuses = statuses.filter(status => {
+              {/* Status list - flat view */}
+              <div className="max-h-80 overflow-y-auto p-1">
+                {Object.entries(PIPELINE_STAGES).flatMap(([stage, statuses]) => 
+                  (statuses as readonly LeadStatus[]).filter(status => {
                     if (!statusSearchQuery) return true
                     const statusLabel = STATUS_CONFIG[status]?.label || status
-                    const stageLabel = PIPELINE_LABELS[stage]
+                    const stageLabel = PIPELINE_LABELS[stage as PipelineStage]
                     return statusLabel.toLowerCase().includes(statusSearchQuery.toLowerCase()) ||
                            stageLabel.toLowerCase().includes(statusSearchQuery.toLowerCase()) ||
                            status.toLowerCase().includes(statusSearchQuery.toLowerCase())
                   })
-
-                  if (filteredStatuses.length === 0) return null
-
-                  const allSelected = filteredStatuses.every(s => statusFilter.has(s))
-                  const someSelected = filteredStatuses.some(s => statusFilter.has(s))
-
+                ).map((status) => {
+                  const config = STATUS_CONFIG[status]
                   return (
-                    <div key={stage}>
-                      {/* Stage header with checkbox to select all */}
-                      <button
-                        onClick={() => toggleStage(stage)}
-                        className="w-full px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-[#676879] bg-[#F5F6F8] hover:bg-[#ECEDF0] sticky top-0 transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          ref={el => { if (el) el.indeterminate = someSelected && !allSelected }}
-                          onChange={() => toggleStage(stage)}
-                          className="monday-checkbox"
-                        />
-                        {PIPELINE_LABELS[stage]}
-                        <span className="text-[#9B9BAD] font-normal mr-auto">
-                          ({filteredStatuses.filter(s => statusFilter.has(s)).length}/{filteredStatuses.length})
-                        </span>
-                      </button>
-                      {/* Individual statuses - minimal design with color dot */}
-                      {filteredStatuses.map((status) => {
-                        const config = STATUS_CONFIG[status]
-                        return (
-                          <button
-                            key={status}
-                            onClick={() => toggleStatus(status)}
-                            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-[#F5F6F8] transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={statusFilter.has(status)}
-                              onChange={() => toggleStatus(status)}
-                              className="monday-checkbox"
-                            />
-                            <span className={cn(
-                              "w-2.5 h-2.5 rounded-full shrink-0",
-                              config?.bgColor || "bg-gray-300"
-                            )} />
-                            <span className="text-sm text-[#323338]">{config?.label || status}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
+                    <button
+                      key={status}
+                      onClick={() => toggleStatus(status)}
+                      className="w-full px-3 py-2 flex items-center gap-3 hover:bg-[#F5F6F8] rounded-lg transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={statusFilter.has(status)}
+                        onChange={() => toggleStatus(status)}
+                        className="monday-checkbox"
+                      />
+                      <span className={cn(
+                        "w-2.5 h-2.5 rounded-full shrink-0",
+                        config?.bgColor || "bg-gray-300"
+                      )} />
+                      <span className="text-sm text-[#323338]">{config?.label || status}</span>
+                    </button>
                   )
                 })}
               </div>

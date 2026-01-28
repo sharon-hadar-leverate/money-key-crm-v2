@@ -17,15 +17,15 @@ for (const [stage, statuses] of Object.entries(PIPELINE_STAGES)) {
  * Get status configuration with O(1) lookup
  */
 export function getStatusConfig(status: string | null) {
-  const key = (status || 'new') as LeadStatus
-  return STATUS_MAP.get(key) ?? STATUS_MAP.get('new')!
+  const key = (status || 'not_contacted') as LeadStatus
+  return STATUS_MAP.get(key) ?? STATUS_MAP.get('not_contacted')!
 }
 
 /**
  * Get the pipeline stage for a status with O(1) lookup
  */
 export function getStatusPipelineStage(status: string | null): PipelineStage {
-  const key = (status || 'new') as LeadStatus
+  const key = (status || 'not_contacted') as LeadStatus
   return STATUS_TO_STAGE_MAP.get(key) ?? 'follow_up'
 }
 

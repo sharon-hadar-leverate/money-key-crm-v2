@@ -49,12 +49,20 @@ from scripts.sync.reconcile import (
 )
 
 
-# Valid statuses in our system
+# Valid statuses in our system (14 canonical statuses)
 VALID_STATUSES = {
-    'new', 'contacted', 'customer', 'lost',
-    'signed', 'meeting_set', 'pending_agreement',
-    'message_sent', 'no_answer', 'not_contacted',
-    'not_relevant', 'closed_elsewhere', 'future_interest',
+    # Follow-up
+    'not_contacted', 'no_answer',
+    # Warm
+    'contacted', 'message_sent',
+    # Hot
+    'meeting_set', 'pending_agreement',
+    # Signed (active customers)
+    'signed', 'under_review', 'report_submitted', 'missing_document', 'completed',
+    # Lost
+    'not_relevant', 'closed_elsewhere',
+    # Future
+    'future_interest',
 }
 
 

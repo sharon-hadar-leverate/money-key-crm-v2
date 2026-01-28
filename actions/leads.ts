@@ -306,7 +306,7 @@ export async function updateLeadStatus(
       .from(Tables.leads)
       .update({
         status: newStatus,
-        is_new: newStatus === 'new',
+        is_new: newStatus === 'not_contacted',
       })
       .eq('id', id)
 

@@ -16,6 +16,7 @@ import {
   getRecentActivity,
   getSourceTrends,
 } from '@/actions/kpis'
+import { getLeads } from '@/actions/leads'
 import { endOfDay, startOfDay, format } from 'date-fns'
 
 interface DashboardPageProps {
@@ -33,7 +34,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     ? format(endOfDay(new Date(params.to)), "yyyy-MM-dd'T'HH:mm:ss")
     : undefined
 
-  const [kpis, dailyTrends, sourcePerf, statusBreakdown, campaigns, activities, sourceTrends] = await Promise.all([
+  const [kpis, dailyTrends, sourcePerf, statusBreakdown, campaigns, activities, sourceTrends, leadsResult] = await Promise.all([
     getLeadKPIs(dateFrom, dateTo),
     getDailyTrends(30, dateFrom, dateTo),
     getSourcePerformance(dateFrom, dateTo),
@@ -41,6 +42,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getCampaignPerformance(dateFrom, dateTo),
     getRecentActivity(5),
     getSourceTrends(30, dateFrom, dateTo),
+    getLeads({ limit: 100 }),
   ])
 
   return (
@@ -56,7 +58,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <LeadsTrendChart data={dailyTrends} />
 
         {/* Row 2: Status Breakdown (full width) */}
-        <StatusBreakdownChart data={statusBreakdown} />
+        <StatusBreakdownChart data={statusBreakdown} leads={leadsResult.data} />
 
         {/* Row 3: Leads by Source Over Time (full width) */}
         <SourceTrendChart data={sourceTrends.data} sources={sourceTrends.sources} />

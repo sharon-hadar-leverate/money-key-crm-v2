@@ -361,30 +361,21 @@ const getTimeSeriesTrendsInternal = cache(async (days: number = 30): Promise<Tim
     const counts = dateMap.get(dateStr) ?? createEmptyStatusCounts()
     result.push({
       date: dateStr,
-      // Original statuses
-      new: counts.new ?? 0,
+      // Canonical 14 statuses
+      not_contacted: counts.not_contacted ?? 0,
+      no_answer: counts.no_answer ?? 0,
       contacted: counts.contacted ?? 0,
-      customer: counts.customer ?? 0,
-      lost: counts.lost ?? 0,
-      // Zoho statuses
-      signed: counts.signed ?? 0,
+      message_sent: counts.message_sent ?? 0,
       meeting_set: counts.meeting_set ?? 0,
       pending_agreement: counts.pending_agreement ?? 0,
-      message_sent: counts.message_sent ?? 0,
-      no_answer: counts.no_answer ?? 0,
-      not_contacted: counts.not_contacted ?? 0,
-      not_relevant: counts.not_relevant ?? 0,
-      closed_elsewhere: counts.closed_elsewhere ?? 0,
-      future_interest: counts.future_interest ?? 0,
-      // New operational statuses
+      signed: counts.signed ?? 0,
       under_review: counts.under_review ?? 0,
       report_submitted: counts.report_submitted ?? 0,
       missing_document: counts.missing_document ?? 0,
       completed: counts.completed ?? 0,
-      // New Zoho status mappings
-      before_contact: counts.before_contact ?? 0,
-      agreement_sent: counts.agreement_sent ?? 0,
-      relevant_next_year: counts.relevant_next_year ?? 0,
+      not_relevant: counts.not_relevant ?? 0,
+      closed_elsewhere: counts.closed_elsewhere ?? 0,
+      future_interest: counts.future_interest ?? 0,
     })
     currentDate.setDate(currentDate.getDate() + 1)
   }

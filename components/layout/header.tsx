@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Bell, Search, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { getInitials } from '@/lib/utils'
+import profileImage from '@/app/assets/profile_image.png'
 
 interface HeaderProps {
   title: string
@@ -65,9 +66,13 @@ export function Header({ title, subtitle, backHref }: HeaderProps) {
 
           {/* User Avatar */}
           <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#F5F6F8] transition-colors cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-[#00A0B0] flex items-center justify-center text-sm font-bold text-white">
-              {getInitials(user?.email || 'U')}
-            </div>
+            <Image
+              src={profileImage}
+              alt={user?.email?.split('@')[0] || 'User'}
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
             <div className="hidden sm:block">
               <p className="text-sm font-medium text-[#323338] leading-none">
                 {user?.email?.split('@')[0] || 'משתמש'}

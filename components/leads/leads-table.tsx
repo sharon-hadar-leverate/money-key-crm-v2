@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,9 @@ import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 import type { Lead, LeadStatus, PipelineStage } from '@/types/leads'
 import { cn } from '@/lib/utils'
+import profileImage from '@/app/assets/profile_image.png'
+import newLeadIcon from '@/app/assets/new_lead.png'
+import newCustomerIcon from '@/app/assets/new_costumer.png'
 
 interface LeadsTableProps {
   leads: Lead[]
@@ -397,17 +401,22 @@ export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, n
                         href={`/leads/${lead.id}`}
                         className="flex items-center gap-3 group/link"
                       >
-                        <div className="w-9 h-9 rounded-lg bg-[#00A0B0] flex items-center justify-center">
-                          <span className="text-sm font-medium text-white">
-                            {lead.name?.charAt(0) || '?'}
-                          </span>
-                        </div>
+                        <Image
+                          src={profileImage}
+                          alt={lead.name || 'Lead'}
+                          width={36}
+                          height={36}
+                          className="rounded-lg"
+                        />
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-[#323338] group-hover/link:text-[#00A0B0] transition-colors">
                             {lead.name}
                           </span>
                           {lead.is_new && (
-                            <span className="inline-flex h-2 w-2 rounded-full bg-[#0073EA]" />
+                            <Image src={newLeadIcon} alt="New" width={20} height={20} />
+                          )}
+                          {lead.status === 'customer' && (
+                            <Image src={newCustomerIcon} alt="Customer" width={20} height={20} />
                           )}
                           {(noteCounts[lead.id] ?? 0) > 0 && (
                             <span title={`${noteCounts[lead.id]} הערות`} className="text-[#E07239]">

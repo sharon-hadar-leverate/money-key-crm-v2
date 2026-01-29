@@ -5,16 +5,20 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Users, Settings, LogOut, Menu, X, BookOpen } from 'lucide-react'
+import { LogOut, Menu, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import moneyKeyLogo from '@/app/assets/moneykey-linkdin3.png'
+import dashboardIcon from '@/app/assets/dahsboard.png'
+import leadsIcon from '@/app/assets/lead_table.png'
+import manualsIcon from '@/app/assets/manuals.png'
+import settingsIcon from '@/app/assets/settings.png'
 
 const navigation = [
-  { name: 'לוח בקרה', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'לידים', href: '/leads', icon: Users },
-  { name: 'הדרכות', href: '/playbooks', icon: BookOpen },
-  { name: 'הגדרות', href: '/settings', icon: Settings },
+  { name: 'לוח בקרה', href: '/dashboard', image: dashboardIcon },
+  { name: 'לידים', href: '/leads', image: leadsIcon },
+  { name: 'הדרכות', href: '/playbooks', image: manualsIcon },
+  { name: 'הגדרות', href: '/settings', image: settingsIcon },
 ]
 
 export function Sidebar() {
@@ -108,7 +112,13 @@ export function Sidebar() {
                   {isActive && (
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-[#00A0B0] rounded-r-full" />
                   )}
-                  <item.icon className="h-5 w-5" />
+                  <Image
+                    src={item.image}
+                    alt={item.name}
+                    width={24}
+                    height={24}
+                    className="shrink-0"
+                  />
                   {item.name}
                 </Link>
               )

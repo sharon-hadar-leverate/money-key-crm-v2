@@ -1,10 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { StatusBadge } from './status-badge'
 import { Timeline } from './timeline'
 import { PlaybookPanel, PlaybookMobileSheet } from '@/components/playbooks'
-import { formatDate, formatCurrency, getInitials } from '@/lib/utils'
+import { formatDate, formatCurrency } from '@/lib/utils'
+import profileImage from '@/app/assets/profile_image.png'
+import newLeadIcon from '@/app/assets/new_lead.png'
+import newCustomerIcon from '@/app/assets/new_costumer.png'
 import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent, MessageSquare, Copy, Check, ChevronDown, Search, FileText, Plus } from 'lucide-react'
 import { updateLead, updateLeadStatus } from '@/actions/leads'
 import { toast } from 'sonner'
@@ -356,11 +360,23 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
               <div className="px-6 pb-6 -mt-10 relative">
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   <div className="flex items-end gap-4">
-                    <div className="w-20 h-20 rounded-xl bg-[#00A0B0] flex items-center justify-center text-2xl font-bold text-white shadow-lg border-4 border-white">
-                      {getInitials(lead.name)}
-                    </div>
+                    <Image
+                      src={profileImage}
+                      alt={lead.name || 'Lead'}
+                      width={80}
+                      height={80}
+                      className="rounded-xl shadow-lg border-4 border-white"
+                    />
                     <div className="pb-1 flex-1">
-                      <h1 className="text-xl font-bold text-[#323338]">{lead.name}</h1>
+                      <div className="flex items-center gap-2">
+                        <h1 className="text-xl font-bold text-[#323338]">{lead.name}</h1>
+                        {lead.is_new && (
+                          <Image src={newLeadIcon} alt="New" width={24} height={24} />
+                        )}
+                        {lead.status === 'customer' && (
+                          <Image src={newCustomerIcon} alt="Customer" width={24} height={24} />
+                        )}
+                      </div>
                       <div className="mt-2 flex items-center gap-3">
                         <StatusBadge status={lead.status} />
                         <span className="text-xs text-[#9B9BAD]">

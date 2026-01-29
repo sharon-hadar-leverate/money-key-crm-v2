@@ -1,8 +1,10 @@
 'use client'
 
+import Image from 'next/image'
 import { Users, TrendingUp, Wallet, Target } from 'lucide-react'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import type { LeadKPIs } from '@/types/leads'
+import goodMoneyIcon from '@/app/assets/good_money.png'
 
 interface KPICardsProps {
   kpis: LeadKPIs
@@ -47,7 +49,12 @@ export function KPICards({ kpis }: KPICardsProps) {
           </div>
           <div>
             <p className="text-xs text-[#9B9BAD] font-medium">אחוז המרה</p>
-            <p className="text-2xl font-bold text-[#00854D] number-display">{kpis.conversionRate.toFixed(1)}%</p>
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-bold text-[#00854D] number-display">{kpis.conversionRate.toFixed(1)}%</p>
+              {kpis.conversionRate > 10 && (
+                <Image src={goodMoneyIcon} alt="Great!" width={32} height={32} />
+              )}
+            </div>
           </div>
         </div>
 

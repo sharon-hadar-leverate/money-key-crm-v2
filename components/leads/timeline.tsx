@@ -1,7 +1,7 @@
 'use client'
 
-import { formatRelativeTime } from '@/lib/utils'
 import { EVENT_CONFIG, type EventType } from '@/types/leads'
+import { RelativeTime } from '@/components/relative-time'
 import type { LeadEvent } from '@/types/leads'
 import { Plus, Pencil, ArrowLeftRight, RefreshCw, Trash, RotateCcw, History, MessageSquarePlus, MessageSquare, MessageSquareX } from 'lucide-react'
 
@@ -61,9 +61,7 @@ export function Timeline({ events }: TimelineProps) {
                       <p className="text-sm font-medium text-[#323338]">
                         {config.label}
                       </p>
-                      <span className="text-xs text-[#9B9BAD] tabular-nums whitespace-nowrap" suppressHydrationWarning>
-                        {formatRelativeTime(event.created_at)}
-                      </span>
+                      <RelativeTime date={event.created_at} className="text-xs text-[#9B9BAD] tabular-nums whitespace-nowrap" />
                     </div>
                     {event.field_name && (
                       <p className="text-xs text-[#676879] mt-1">

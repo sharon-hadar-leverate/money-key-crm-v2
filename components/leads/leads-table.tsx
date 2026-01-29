@@ -19,6 +19,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { StatusBadge } from './status-badge'
+import { LeadAvatar } from './lead-avatar'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { MoreHorizontal, Search, Eye, Pencil, Trash, Users, Filter, ChevronDown, MessageSquare, Copy, Check } from 'lucide-react'
 import { softDeleteLead, updateLeadStatus } from '@/actions/leads'
@@ -30,7 +31,6 @@ import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 import type { Lead, LeadStatus, PipelineStage } from '@/types/leads'
 import { cn } from '@/lib/utils'
-import profileImage from '@/app/assets/profile_image_no_bg.png'
 import newLeadIcon from '@/app/assets/new_lead_no_bg.png'
 import newCustomerIcon from '@/app/assets/new_costumer_no_bg.png'
 
@@ -401,13 +401,7 @@ export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, n
                         href={`/leads/${lead.id}`}
                         className="flex items-center gap-3 group/link"
                       >
-                        <Image
-                          src={profileImage}
-                          alt={lead.name || 'Lead'}
-                          width={36}
-                          height={36}
-                          className="rounded-lg"
-                        />
+                        <LeadAvatar lead={lead} size="sm" />
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-[#323338] group-hover/link:text-[#00A0B0] transition-colors">
                             {lead.name}

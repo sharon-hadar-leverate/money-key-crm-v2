@@ -189,6 +189,7 @@ export type Database = {
           utm_medium: string | null
           utm_source: string | null
           utm_term: string | null
+          whatsapp_avatar_url: string | null
         }
         Insert: {
           ad_pos?: string | null
@@ -221,6 +222,7 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+          whatsapp_avatar_url?: string | null
         }
         Update: {
           ad_pos?: string | null
@@ -253,6 +255,7 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           utm_term?: string | null
+          whatsapp_avatar_url?: string | null
         }
         Relationships: [
           {

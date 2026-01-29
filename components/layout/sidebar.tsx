@@ -9,10 +9,10 @@ import { LogOut, Menu, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import moneyKeyLogo from '@/app/assets/moneykey-linkdin3.png'
-import dashboardIcon from '@/app/assets/dahsboard.png'
-import leadsIcon from '@/app/assets/lead_table.png'
-import manualsIcon from '@/app/assets/manuals.png'
-import settingsIcon from '@/app/assets/settings.png'
+import dashboardIcon from '@/app/assets/dahsboard_no_bg.png'
+import leadsIcon from '@/app/assets/lead_table_no_bg.png'
+import manualsIcon from '@/app/assets/manuals_no_bg.png'
+import settingsIcon from '@/app/assets/settings_no_bg.png'
 
 const navigation = [
   { name: 'לוח בקרה', href: '/dashboard', image: dashboardIcon },

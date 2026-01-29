@@ -6,7 +6,7 @@ import { Bell, Search, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
-import profileImage from '@/app/assets/profile_image.png'
+import profileImage from '@/app/assets/profile_image_no_bg.png'
 
 interface HeaderProps {
   title: string

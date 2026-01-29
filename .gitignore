@@ -33,6 +33,7 @@ yarn-error.log*
 
 # claude code
 .claude/
+.mcp.json
 
 # playwright screenshots
 .playwright-mcp/

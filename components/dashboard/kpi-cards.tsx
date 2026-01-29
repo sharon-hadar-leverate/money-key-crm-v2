@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { Users, TrendingUp, Wallet, Target } from 'lucide-react'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import type { LeadKPIs } from '@/types/leads'
-import goodMoneyIcon from '@/app/assets/good_money.png'
+import goodMoneyIcon from '@/app/assets/good_money_no_bg.png'
 
 interface KPICardsProps {
   kpis: LeadKPIs

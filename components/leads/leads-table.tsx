@@ -30,9 +30,9 @@ import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 import type { Lead, LeadStatus, PipelineStage } from '@/types/leads'
 import { cn } from '@/lib/utils'
-import profileImage from '@/app/assets/profile_image.png'
-import newLeadIcon from '@/app/assets/new_lead.png'
-import newCustomerIcon from '@/app/assets/new_costumer.png'
+import profileImage from '@/app/assets/profile_image_no_bg.png'
+import newLeadIcon from '@/app/assets/new_lead_no_bg.png'
+import newCustomerIcon from '@/app/assets/new_costumer_no_bg.png'
 
 interface LeadsTableProps {
   leads: Lead[]

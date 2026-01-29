@@ -17,4 +17,15 @@ Sentry.init({
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
+
+  // Ignore expected errors that are not actionable bugs
+  ignoreErrors: [
+    // Next.js expected navigation errors
+    "NEXT_NOT_FOUND",
+    "NEXT_REDIRECT",
+    // Webpack cache errors (dev environment)
+    /ENOENT.*\.next\/cache/,
+    /Cannot find module '\.\/\d+\.js'/,
+    /Cannot find module '.*vendor-chunks/,
+  ],
 });

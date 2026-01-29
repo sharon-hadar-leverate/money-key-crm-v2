@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { formatDistanceToNow } from 'date-fns'
-import { he } from 'date-fns/locale'
 import { MessageSquare, Plus, Pencil, Trash2, Check, User } from 'lucide-react'
+import { RelativeTime } from '@/components/relative-time'
 import { createNote, getNotes, updateNote, deleteNote, type NoteWithUser } from '@/actions/notes'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -95,15 +94,6 @@ export function NotesSection({ leadId, initialNotes = [], isEmbedded = false }: 
   function cancelAdd() {
     setIsAdding(false)
     setNewContent('')
-  }
-
-  function formatDate(dateStr: string | null) {
-    if (!dateStr) return ''
-    try {
-      return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: he })
-    } catch {
-      return ''
-    }
   }
 
   return (
@@ -237,9 +227,7 @@ export function NotesSection({ leadId, initialNotes = [], isEmbedded = false }: 
                           <span className="text-sm font-medium text-[#323338]">
                             {note.user_display_name}
                           </span>
-                          <span className="text-xs text-[#9B9BAD] mr-2" suppressHydrationWarning>
-                            {formatDate(note.created_at)}
-                          </span>
+                          <RelativeTime date={note.created_at} className="text-xs text-[#9B9BAD] mr-2" />
                         </div>
                       </div>
                       {/* Actions - only show for own notes */}
@@ -266,8 +254,8 @@ export function NotesSection({ leadId, initialNotes = [], isEmbedded = false }: 
                     </p>
                     {/* Show if edited */}
                     {note.updated_at && note.updated_at !== note.created_at && (
-                      <p className="text-xs text-[#9B9BAD] mt-2" suppressHydrationWarning>
-                        נערך {formatDate(note.updated_at)}
+                      <p className="text-xs text-[#9B9BAD] mt-2">
+                        נערך <RelativeTime date={note.updated_at} />
                       </p>
                     )}
                   </>

@@ -1,7 +1,7 @@
 'use client'
 
-import { formatRelativeTime } from '@/lib/utils'
 import { EVENT_CONFIG, type EventType } from '@/types/leads'
+import { RelativeTime } from '@/components/relative-time'
 import { Plus, Pencil, ArrowLeftRight, RefreshCw, Trash, RotateCcw, Activity, Clock, MessageSquarePlus, MessageSquare, MessageSquareX } from 'lucide-react'
 
 const ICONS: Record<EventType, typeof Plus> = {
@@ -94,8 +94,8 @@ export function RecentActivity({ activities }: RecentActivityProps) {
                   </div>
 
                   {/* Time */}
-                  <div className="flex-shrink-0 text-xs text-[#9B9BAD] tabular-nums bg-[#F5F6F8] px-2 py-1 rounded-md" suppressHydrationWarning>
-                    {formatRelativeTime(activity.created_at)}
+                  <div className="flex-shrink-0 text-xs text-[#9B9BAD] tabular-nums bg-[#F5F6F8] px-2 py-1 rounded-md">
+                    <RelativeTime date={activity.created_at} />
                   </div>
                 </div>
               )

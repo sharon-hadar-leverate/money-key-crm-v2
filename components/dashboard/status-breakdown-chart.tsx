@@ -3,6 +3,7 @@
 import { memo, useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ArrowDown, GitBranch, CheckCircle2, XCircle, TrendingUp, Users, ExternalLink } from 'lucide-react'
+import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/leads/status-badge'
 import type { StatusBreakdown } from '@/actions/kpis'
@@ -249,7 +250,7 @@ const QuickPreviewTable = memo(function QuickPreviewTable({
                   {lead.phone || '-'}
                 </td>
                 <td className="px-3 py-1.5 w-[100px] text-[#676879] text-xs whitespace-nowrap">
-                  {lead.created_at ? new Date(lead.created_at).toLocaleDateString('he-IL') : '-'}
+                  {lead.created_at ? format(new Date(lead.created_at), 'dd/MM/yyyy') : '-'}
                 </td>
                 <td className="px-3 py-1.5">
                   <StatusBadge status={lead.status} size="sm" />

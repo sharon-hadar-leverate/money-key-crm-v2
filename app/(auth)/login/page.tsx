@@ -33,7 +33,7 @@ export default function LoginPage() {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-gray-900">
-              מפתח הכסף
+              Money Key
             </CardTitle>
             <p className="text-sm text-gray-500 mt-1">Money Key CRM</p>
           </div>

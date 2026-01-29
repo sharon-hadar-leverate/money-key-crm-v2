@@ -78,7 +78,7 @@ export function Sidebar() {
                 className="rounded-lg"
               />
               <div>
-                <h1 className="text-base font-bold text-[#323338]">מפתח הכסף</h1>
+                <h1 className="text-base font-bold text-[#323338]">Money Key</h1>
                 <p className="text-xs text-[#676879]">ניהול לידים</p>
               </div>
             </div>

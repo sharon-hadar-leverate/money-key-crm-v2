@@ -61,7 +61,7 @@ export function Timeline({ events }: TimelineProps) {
                       <p className="text-sm font-medium text-[#323338]">
                         {config.label}
                       </p>
-                      <span className="text-xs text-[#9B9BAD] tabular-nums whitespace-nowrap">
+                      <span className="text-xs text-[#9B9BAD] tabular-nums whitespace-nowrap" suppressHydrationWarning>
                         {formatRelativeTime(event.created_at)}
                       </span>
                     </div>

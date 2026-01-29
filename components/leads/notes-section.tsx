@@ -237,7 +237,7 @@ export function NotesSection({ leadId, initialNotes = [], isEmbedded = false }: 
                           <span className="text-sm font-medium text-[#323338]">
                             {note.user_display_name}
                           </span>
-                          <span className="text-xs text-[#9B9BAD] mr-2">
+                          <span className="text-xs text-[#9B9BAD] mr-2" suppressHydrationWarning>
                             {formatDate(note.created_at)}
                           </span>
                         </div>
@@ -266,7 +266,7 @@ export function NotesSection({ leadId, initialNotes = [], isEmbedded = false }: 
                     </p>
                     {/* Show if edited */}
                     {note.updated_at && note.updated_at !== note.created_at && (
-                      <p className="text-xs text-[#9B9BAD] mt-2">
+                      <p className="text-xs text-[#9B9BAD] mt-2" suppressHydrationWarning>
                         נערך {formatDate(note.updated_at)}
                       </p>
                     )}

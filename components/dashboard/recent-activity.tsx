@@ -94,7 +94,7 @@ export function RecentActivity({ activities }: RecentActivityProps) {
                   </div>
 
                   {/* Time */}
-                  <div className="flex-shrink-0 text-xs text-[#9B9BAD] tabular-nums bg-[#F5F6F8] px-2 py-1 rounded-md">
+                  <div className="flex-shrink-0 text-xs text-[#9B9BAD] tabular-nums bg-[#F5F6F8] px-2 py-1 rounded-md" suppressHydrationWarning>
                     {formatRelativeTime(activity.created_at)}
                   </div>
                 </div>

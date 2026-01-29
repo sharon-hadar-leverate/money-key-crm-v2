@@ -29,6 +29,11 @@ export function formatDateTime(date: string | Date | null): string {
 export function formatRelativeTime(date: string | Date | null): string {
   if (!date) return '-'
 
+  // During SSR, return the formatted date instead of relative time to avoid hydration mismatch
+  if (typeof window === 'undefined') {
+    return formatDate(date)
+  }
+
   const now = new Date()
   const then = new Date(date)
   const diffInSeconds = Math.floor((now.getTime() - then.getTime()) / 1000)

@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { StatusBadge } from './status-badge'
+import { LeadAvatar } from './lead-avatar'
 import { Timeline } from './timeline'
 import { PlaybookPanel, PlaybookMobileSheet } from '@/components/playbooks'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import profileImage from '@/app/assets/profile_image_no_bg.png'
 import newLeadIcon from '@/app/assets/new_lead_no_bg.png'
 import newCustomerIcon from '@/app/assets/new_costumer_no_bg.png'
 import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent, MessageSquare, Copy, Check, ChevronDown, Search, FileText, Plus } from 'lucide-react'
@@ -360,13 +360,7 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
               <div className="px-6 pb-6 -mt-10 relative">
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   <div className="flex items-end gap-4">
-                    <Image
-                      src={profileImage}
-                      alt={lead.name || 'Lead'}
-                      width={80}
-                      height={80}
-                      className="rounded-xl shadow-lg border-4 border-white"
-                    />
+                    <LeadAvatar lead={lead} size="lg" className="shadow-lg border-4 border-white" />
                     <div className="pb-1 flex-1">
                       <div className="flex items-center gap-2">
                         <h1 className="text-xl font-bold text-[#323338]">{lead.name}</h1>

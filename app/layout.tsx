@@ -9,8 +9,14 @@ const heebo = Heebo({
 })
 
 export const metadata: Metadata = {
-  title: "מפתח הכסף - CRM",
-  description: "מערכת ניהול לידים",
+  title: "Money Key - CRM",
+  description: "Lead Management System",
+  openGraph: {
+    title: "Money Key - CRM",
+    description: "Lead Management System",
+    images: ["/assets/moneykey-linkdin3.png"],
+    type: "website",
+  },
 }
 
 export default function RootLayout({

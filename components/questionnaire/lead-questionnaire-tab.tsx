@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ClipboardList, Check, Clock, ChevronDown, ChevronUp, Eye } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
-import { QuestionnaireForm } from './questionnaire-form'
 import { calculateProgress } from '@/lib/questionnaire-utils'
 import type {
   Questionnaire,
@@ -20,7 +19,6 @@ interface LeadQuestionnaireTabProps {
 }
 
 export function LeadQuestionnaireTab({
-  leadId,
   filled,
   unfilled,
   questionnairesWithFields,

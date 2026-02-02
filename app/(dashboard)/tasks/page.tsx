@@ -9,7 +9,7 @@ import { getQuestionnaires, getResponses, getQuestionnaireById } from '@/actions
 import { getMyTasks } from '@/actions/tasks'
 import { calculateProgress } from '@/lib/questionnaire-utils'
 import { createClient } from '@/lib/supabase/server'
-import { ClipboardList, CheckSquare, Plus } from 'lucide-react'
+import { ClipboardList, CheckSquare } from 'lucide-react'
 
 export default async function TasksPage() {
   const supabase = await createClient()

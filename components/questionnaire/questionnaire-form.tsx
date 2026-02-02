@@ -12,7 +12,6 @@ import type {
   QuestionnaireResponse,
   Answers,
   AnswerValue,
-  QuestionnaireProgress,
 } from '@/types/questionnaire'
 
 interface QuestionnaireFormProps {
@@ -56,6 +55,7 @@ export function QuestionnaireForm({
     }, autoSaveDelay)
 
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [answers, autoSave, readOnly, hasUnsavedChanges, autoSaveDelay])
 
   // Handle field change
@@ -69,7 +69,7 @@ export function QuestionnaireForm({
     // Clear error for this field
     if (errors[fieldSlug]) {
       setErrors(prev => {
-        const { [fieldSlug]: _, ...rest } = prev
+        const { [fieldSlug]: _removed, ...rest } = prev
         return rest
       })
     }

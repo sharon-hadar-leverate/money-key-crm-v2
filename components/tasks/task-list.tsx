@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { TaskCard } from './task-card'
 import { CheckSquare, Loader2 } from 'lucide-react'

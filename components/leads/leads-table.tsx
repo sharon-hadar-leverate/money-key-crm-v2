@@ -121,7 +121,7 @@ function InlineStatusDropdown({
 export function LeadsTable({ leads: initialLeads, totalCount, initialStage, initialStatuses, noteCounts: initialNoteCounts = {} }: LeadsTableProps) {
   // Infinite scroll state
   const [allLeads, setAllLeads] = useState<Lead[]>(initialLeads)
-  const [noteCounts, setNoteCounts] = useState<Record<string, number>>(initialNoteCounts)
+  const [noteCounts] = useState<Record<string, number>>(initialNoteCounts)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(initialLeads.length < totalCount)
   const [offset, setOffset] = useState(initialLeads.length)
@@ -150,7 +150,7 @@ export function LeadsTable({ leads: initialLeads, totalCount, initialStage, init
     setIsLoadingMore(true)
 
     try {
-      const { data: newLeads, count: newCount } = await getLeads({
+      const { data: newLeads } = await getLeads({
         limit: PAGE_SIZE,
         offset,
       })

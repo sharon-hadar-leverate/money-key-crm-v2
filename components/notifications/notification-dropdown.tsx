@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import Link from 'next/link'
 import { Bell, CheckCheck, Loader2 } from 'lucide-react'
 import { NotificationItem } from './notification-item'

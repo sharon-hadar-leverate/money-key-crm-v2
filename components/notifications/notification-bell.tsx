@@ -11,7 +11,6 @@ export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const loadData = useCallback(async () => {
@@ -27,7 +26,7 @@ export function NotificationBell() {
       setUnreadCount(0)
       setNotifications([])
     } finally {
-      setIsLoading(false)
+      // Loading complete
     }
   }, [])
 

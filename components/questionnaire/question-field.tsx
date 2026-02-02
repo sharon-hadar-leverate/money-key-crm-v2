@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Check, ChevronDown } from 'lucide-react'
-import type { QuestionnaireField, AnswerValue, FieldConfig } from '@/types/questionnaire'
+import type { QuestionnaireField, AnswerValue } from '@/types/questionnaire'
 
 interface QuestionFieldProps {
   field: QuestionnaireField
@@ -326,8 +326,6 @@ function ScaleField({ field, value, onChange, disabled }: Omit<QuestionFieldProp
 
 // Date Field
 function DateField({ field, value, onChange, disabled }: Omit<QuestionFieldProps, 'error'>) {
-  const config = field.config
-
   return (
     <input
       type="date"

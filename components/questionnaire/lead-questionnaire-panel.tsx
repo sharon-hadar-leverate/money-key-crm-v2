@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { cn } from '@/lib/utils'
-import { ClipboardList, X, ChevronLeft } from 'lucide-react'
+import { ClipboardList, ChevronLeft } from 'lucide-react'
 import { QuestionnaireForm } from './questionnaire-form'
 import { QuestionnaireCard, QuestionnaireSectionHeader, UnfilledQuestionnairesPlaceholder } from './questionnaire-card'
 import {

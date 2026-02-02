@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow, format, isToday, isTomorrow, isPast } from 'date-fns'
 import { he } from 'date-fns/locale'
@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Circle,
   Clock,
-  User,
   Link as LinkIcon,
   Loader2,
   AlertTriangle,
@@ -40,7 +39,6 @@ function formatDueDate(dateStr: string | null): { text: string; isOverdue: boole
   if (!dateStr) return { text: '', isOverdue: false }
 
   const date = new Date(dateStr)
-  const now = new Date()
 
   if (isToday(date)) {
     return { text: 'היום', isOverdue: false }

@@ -16,54 +16,54 @@ interface StatusBreakdownChartProps {
 
 // Flow diagram structure - the journey from lead to customer
 const FLOW_ROWS = [
-  // Row 1: Initial contact phase
+  // Row 1: Initial contact & warm phase
   {
     id: 'contact',
     title: 'יצירת קשר',
     items: [
       { statuses: ['not_contacted'], label: 'טרם יצרנו קשר', icon: '📞' },
       { statuses: ['no_answer'], label: 'אין מענה', icon: '📵' },
-      { statuses: ['contacted'], label: 'נוצר קשר', icon: '✅' },
       { statuses: ['message_sent'], label: 'נשלחה הודעה', icon: '💬' },
+      { statuses: ['meeting_set'], label: 'נקבעה שיחה', icon: '📅' },
+      { statuses: ['pending_agreement'], label: 'בהמתנה להסכם', icon: '📋' },
     ],
     gradient: 'from-blue-500/10 to-blue-600/5',
     accentColor: '#0073EA',
     bgColor: 'bg-blue-50',
   },
-  // Row 2: Negotiation phase
-  {
-    id: 'negotiation',
-    title: 'משא ומתן',
-    items: [
-      { statuses: ['meeting_set'], label: 'נקבעה שיחה', icon: '📅' },
-      { statuses: ['pending_agreement'], label: 'בהמתנה להסכם', icon: '📋' },
-      { statuses: ['signed'], label: 'חתם על הסכם', icon: '✍️' },
-    ],
-    gradient: 'from-amber-500/10 to-orange-500/5',
-    accentColor: '#D17A00',
-    bgColor: 'bg-amber-50',
-  },
-  // Row 3: Customer process phase
+  // Row 2: Customer process phase
   {
     id: 'customer',
     title: 'תהליך לקוח',
     items: [
+      { statuses: ['signed'], label: 'חתם על הסכם', icon: '✍️' },
       { statuses: ['under_review'], label: 'בבדיקה', icon: '🔍' },
       { statuses: ['missing_document'], label: 'חסר מסמך', icon: '📄' },
       { statuses: ['report_submitted'], label: 'הוגש דוח', icon: '📊' },
-      { statuses: ['completed'], label: 'הושלם', icon: '🎉' },
     ],
     gradient: 'from-emerald-500/10 to-green-500/5',
     accentColor: '#00854D',
     bgColor: 'bg-emerald-50',
   },
+  // Row 3: Payment workflow
+  {
+    id: 'payment',
+    title: 'תהליך גבייה',
+    items: [
+      { statuses: ['waiting_for_payment'], label: 'ממתין להגבייה', icon: '💰' },
+      { statuses: ['payment_completed'], label: 'גבייה הושלמה', icon: '✅' },
+    ],
+    gradient: 'from-amber-500/10 to-orange-500/5',
+    accentColor: '#D17A00',
+    bgColor: 'bg-amber-50',
+  },
 ] as const
 
 // Exit statuses - leads that left the funnel
 const EXIT_STATUSES = [
-  { status: 'not_relevant', label: 'לא רלוונטי', icon: '❌' },
-  { status: 'future_interest', label: 'מעוניין בעתיד', icon: '⏳' },
-  { status: 'closed_elsewhere', label: 'סגר במקום אחר', icon: '🏢' },
+  { status: 'not_relevant', label: 'לא רלוונטי', icon: '❌', isNegative: true },
+  { status: 'closed_elsewhere', label: 'סגר במקום אחר', icon: '🏢', isNegative: true },
+  { status: 'future_interest', label: 'מעוניין בעתיד', icon: '⏳', isNegative: false },
 ] as const
 
 // Helper to build leads URL with status filter
@@ -269,17 +269,17 @@ export function StatusBreakdownChart({ data, leads = [] }: StatusBreakdownChartP
   const statusMap = useMemo(() => new Map(data.map(d => [d.status, d])), [data])
 
   // Memoize calculations (rerender-memo)
-  const { totalLeads, exitTotal, activeLeads, completedCount } = useMemo(() => {
+  const { totalLeads, exitTotal, activeLeads, paymentCompletedCount } = useMemo(() => {
     const total = data.reduce((sum, d) => sum + d.count, 0)
     const exits = EXIT_STATUSES.reduce((sum, { status }) => {
       return sum + (statusMap.get(status)?.count || 0)
     }, 0)
-    const completed = statusMap.get('completed')?.count || 0
+    const paymentCompleted = statusMap.get('payment_completed')?.count || 0
     return {
       totalLeads: total,
       exitTotal: exits,
       activeLeads: total - exits,
-      completedCount: completed,
+      paymentCompletedCount: paymentCompleted,
     }
   }, [data, statusMap])
 
@@ -371,7 +371,7 @@ export function StatusBreakdownChart({ data, leads = [] }: StatusBreakdownChartP
                   <div className="flex flex-wrap items-center gap-2 justify-center md:justify-start xl:shrink-0">
                     {row.items.map((item, itemIndex) => {
                       const count = getCount(item.statuses)
-                      const isHighlighted = (item.statuses as readonly string[]).includes('completed') && count > 0
+                      const isHighlighted = (item.statuses as readonly string[]).includes('payment_completed') && count > 0
 
                       return (
                         <div key={item.statuses.join('-')} className="flex items-center">
@@ -437,10 +437,10 @@ export function StatusBreakdownChart({ data, leads = [] }: StatusBreakdownChartP
         </div>
 
         {/* Success indicator */}
-        {completedCount > 0 && (
+        {paymentCompletedCount > 0 && (
           <div className="mt-6 flex items-center justify-center">
             <Link
-              href={buildLeadsUrl(['completed'])}
+              href={buildLeadsUrl(['payment_completed'])}
               className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-l from-emerald-50 to-green-50 border-2 border-emerald-200 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all group"
             >
               <div className="relative">
@@ -451,9 +451,9 @@ export function StatusBreakdownChart({ data, leads = [] }: StatusBreakdownChartP
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-emerald-600 number-display">
-                  {completedCount}
+                  {paymentCompletedCount}
                 </p>
-                <p className="text-xs text-emerald-500 font-medium">לקוחות הושלמו</p>
+                <p className="text-xs text-emerald-500 font-medium">גבייה הושלמה</p>
               </div>
               <span className="text-2xl">🎉</span>
               <ExternalLink className="h-4 w-4 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />

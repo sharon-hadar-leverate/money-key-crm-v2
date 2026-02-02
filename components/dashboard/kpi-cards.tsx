@@ -11,7 +11,7 @@ interface KPICardsProps {
 }
 
 export function KPICards({ kpis }: KPICardsProps) {
-  const activeLeads = kpis.followUpLeads + kpis.warmLeads + kpis.hotLeads
+  const activeLeads = kpis.followUpLeads + kpis.warmLeads
 
   return (
     <div className="monday-card p-4">

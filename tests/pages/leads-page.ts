@@ -82,14 +82,15 @@ export class LeadsPage extends BasePage {
   /**
    * Change lead status via dropdown menu
    */
-  async changeLeadStatusViaMenu(name: string, status: 'contacted' | 'customer' | 'lost'): Promise<void> {
+  async changeLeadStatusViaMenu(name: string, status: string): Promise<void> {
     await this.openLeadMenu(name)
-    const statusLabels = {
-      contacted: 'סמן כנוצר קשר',
-      customer: 'סמן כלקוח',
-      lost: 'סמן כאבוד',
+    const statusLabels: Record<string, string> = {
+      message_sent: 'סמן כנשלחה הודעה',
+      signed: 'סמן כחתם על הסכם',
+      not_relevant: 'סמן כלא רלוונטי',
     }
-    await this.page.getByRole('menuitem', { name: statusLabels[status] }).click()
+    const label = statusLabels[status] || `סמן כ${status}`
+    await this.page.getByRole('menuitem', { name: label }).click()
   }
 
   /**

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { Tables } from '@/lib/tables'
+import { createNotificationForAllUsers } from './notifications'
 import type {
   Lead,
   LeadEvent,
@@ -68,6 +69,20 @@ export async function createLead(input: CreateLeadInput): Promise<{
       metadata: {
         source: input.source,
         utm_source: input.utm_source,
+      },
+    })
+
+    // Create notification for all users
+    await createNotificationForAllUsers({
+      type: 'new_lead',
+      title: `ליד חדש: ${input.name}`,
+      body: input.source ? `מקור: ${input.source}` : undefined,
+      entity_type: 'lead',
+      entity_id: data.id,
+      metadata: {
+        lead_name: input.name,
+        lead_id: data.id,
+        source: input.source,
       },
     })
 
@@ -216,7 +231,7 @@ export async function updateLead(input: UpdateLeadInput): Promise<{
 
     const fieldsToCheck: (keyof UpdateLeadInput)[] = [
       'name', 'email', 'phone', 'first_name', 'last_name',
-      'status', 'expected_revenue', 'probability', 'is_new'
+      'status', 'expected_revenue', 'probability', 'refund_amount', 'commission_rate', 'is_new'
     ]
 
     for (const field of fieldsToCheck) {
@@ -322,6 +337,28 @@ export async function updateLeadStatus(
       user_email: userEmail,
     })
 
+    // Get lead name for notification
+    const { data: leadData } = await supabase
+      .from(Tables.leads)
+      .select('name')
+      .eq('id', id)
+      .single()
+
+    // Create notification for all users
+    await createNotificationForAllUsers({
+      type: 'status_change',
+      title: `שינוי סטטוס: ${leadData?.name ?? 'ליד'}`,
+      body: `${oldStatus} → ${newStatus}`,
+      entity_type: 'lead',
+      entity_id: id,
+      metadata: {
+        lead_name: leadData?.name ?? undefined,
+        lead_id: id,
+        old_status: oldStatus ?? undefined,
+        new_status: newStatus,
+      },
+    })
+
     revalidatePath('/leads')
     revalidatePath(`/leads/${id}`)
     revalidatePath('/dashboard')
@@ -421,4 +458,84 @@ export async function markLeadAsSeen(id: string): Promise<void> {
     .eq('id', id)
 
   revalidatePath('/leads')
+}
+
+// ============ FOLLOW-UP DATE ============
+export async function updateLeadFollowUp(
+  leadId: string,
+  followUpAt: string | null
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const userEmail = await getCurrentUserEmail()
+
+    // Get current follow-up date for event logging
+    const { data: lead } = await supabase
+      .from(Tables.leads)
+      .select('follow_up_at, name')
+      .eq('id', leadId)
+      .single()
+
+    if (!lead) {
+      return { success: false, error: 'Lead not found' }
+    }
+
+    const oldFollowUp = lead.follow_up_at
+
+    // Update follow-up date
+    const { error: updateError } = await supabase
+      .from(Tables.leads)
+      .update({
+        follow_up_at: followUpAt,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', leadId)
+
+    if (updateError) throw updateError
+
+    // Log follow-up change event
+    await supabase.from(Tables.lead_events).insert({
+      lead_id: leadId,
+      event_type: 'field_changed',
+      field_name: 'follow_up_at',
+      old_value: oldFollowUp ?? '',
+      new_value: followUpAt ?? '',
+      user_email: userEmail,
+      metadata: {
+        action: followUpAt ? 'set_follow_up' : 'clear_follow_up',
+      },
+    })
+
+    revalidatePath('/leads')
+    revalidatePath(`/leads/${leadId}`)
+    revalidatePath('/dashboard')
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to update follow-up date:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update follow-up date',
+    }
+  }
+}
+
+// ============ GET LEADS WITH FOLLOW-UP ============
+export async function getLeadsWithFollowUp(limit: number = 10): Promise<Lead[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from(Tables.leads)
+    .select('*')
+    .not('follow_up_at', 'is', null)
+    .is('deleted_at', null)
+    .order('follow_up_at', { ascending: true })
+    .limit(limit)
+
+  if (error) {
+    console.error('Failed to fetch leads with follow-up:', error)
+    return []
+  }
+
+  return data ?? []
 }

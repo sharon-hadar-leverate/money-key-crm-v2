@@ -4,6 +4,11 @@ import { LeadDetail } from '@/components/leads/lead-detail'
 import { getLeadWithEvents, markLeadAsSeen } from '@/actions/leads'
 import { getNotes } from '@/actions/notes'
 import { getPlaybooks, getPlaybookForLead, getDefaultPlaybook } from '@/actions/playbooks'
+import {
+  getQuestionnairesStatusForTarget,
+  getQuestionnaireById,
+} from '@/actions/questionnaire'
+import type { QuestionnaireWithFields } from '@/types/questionnaire'
 
 interface LeadPageProps {
   params: Promise<{ id: string }>
@@ -12,13 +17,14 @@ interface LeadPageProps {
 export default async function LeadPage({ params }: LeadPageProps) {
   const { id } = await params
 
-  // Fetch lead data, notes, and playbooks in parallel
-  const [result, notes, playbooks, currentPlaybook, defaultPlaybook] = await Promise.all([
+  // Fetch lead data, notes, playbooks, and questionnaires in parallel
+  const [result, notes, playbooks, currentPlaybook, defaultPlaybook, questionnaireStatus] = await Promise.all([
     getLeadWithEvents(id),
     getNotes(id),
     getPlaybooks(),
     getPlaybookForLead(id),
     getDefaultPlaybook(),
+    getQuestionnairesStatusForTarget('lead', id, 'lead'),
   ])
 
   if (!result) {
@@ -29,6 +35,22 @@ export default async function LeadPage({ params }: LeadPageProps) {
   if (result.lead.is_new) {
     void markLeadAsSeen(id)
   }
+
+  // Fetch full questionnaire data (with fields) for each questionnaire
+  const allQuestionnaireIds = [
+    ...questionnaireStatus.unfilled.map(q => q.id),
+    ...questionnaireStatus.filled.map(({ questionnaire }) => questionnaire.id),
+  ]
+
+  const questionnairesWithFields = new Map<string, QuestionnaireWithFields>()
+  await Promise.all(
+    allQuestionnaireIds.map(async (qId) => {
+      const full = await getQuestionnaireById(qId)
+      if (full) {
+        questionnairesWithFields.set(qId, full)
+      }
+    })
+  )
 
   return (
     <>
@@ -41,6 +63,11 @@ export default async function LeadPage({ params }: LeadPageProps) {
           playbooks={playbooks}
           currentPlaybook={currentPlaybook}
           defaultPlaybookId={defaultPlaybook?.id ?? null}
+          questionnaires={{
+            filled: questionnaireStatus.filled,
+            unfilled: questionnaireStatus.unfilled,
+            withFields: questionnairesWithFields,
+          }}
         />
       </div>
     </>

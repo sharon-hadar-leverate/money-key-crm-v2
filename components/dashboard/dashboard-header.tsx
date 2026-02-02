@@ -1,16 +1,29 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useMemo, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { DateRange } from 'react-day-picker'
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
+import { createClient } from '@/lib/supabase/client'
+import type { User } from '@supabase/supabase-js'
+import profileImage from '@/app/assets/profile_image_no_bg.png'
+import { NotificationBell } from '@/components/notifications'
 
 export function DashboardHeader() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
+  const [user, setUser] = useState<User | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user)
+    })
+  }, [supabase])
 
   // Parse date range from URL search params
   const dateRange = useMemo((): DateRange | undefined => {
@@ -70,6 +83,26 @@ export function DashboardHeader() {
           placeholder="כל התקופה"
           className="w-[240px]"
         />
+
+        {/* Notifications */}
+        <NotificationBell />
+
+        {/* User Avatar */}
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#F5F6F8] transition-colors cursor-pointer">
+          <Image
+            src={profileImage}
+            alt={user?.email?.split('@')[0] || 'User'}
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
+          <div className="hidden sm:block">
+            <p className="text-sm font-medium text-[#323338] leading-none">
+              {user?.email?.split('@')[0] || 'משתמש'}
+            </p>
+            <p className="text-[10px] text-[#676879] mt-0.5">מנהל</p>
+          </div>
+        </div>
       </div>
     </header>
   )

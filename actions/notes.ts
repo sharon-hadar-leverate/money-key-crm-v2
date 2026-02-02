@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { Tables } from '@/lib/tables'
 import { getOrCreateUserProfile, getUserProfiles, type UserProfile } from './user-profile'
+import { createNotificationForAllUsers } from './notifications'
 
 // Note type with user profile for display
 export interface NoteWithUser {
@@ -95,6 +96,27 @@ export async function createNote(
       metadata: {
         note_id: note.id,
         user_display_name: profileResult.data.display_name,
+      },
+    })
+
+    // Get lead name for notification
+    const { data: leadData } = await supabase
+      .from(Tables.leads)
+      .select('name')
+      .eq('id', leadId)
+      .single()
+
+    // Create notification for all users
+    await createNotificationForAllUsers({
+      type: 'note_added',
+      title: `הערה חדשה: ${leadData?.name ?? 'ליד'}`,
+      body: trimmedContent.substring(0, 100) + (trimmedContent.length > 100 ? '...' : ''),
+      entity_type: 'lead',
+      entity_id: leadId,
+      metadata: {
+        lead_name: leadData?.name,
+        lead_id: leadId,
+        note_preview: trimmedContent.substring(0, 100),
       },
     })
 

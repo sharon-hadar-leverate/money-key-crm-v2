@@ -58,7 +58,7 @@ export interface TestLead {
   name: string
   email?: string
   phone?: string
-  status?: 'new' | 'contacted' | 'customer' | 'lost'
+  status?: 'not_contacted' | 'message_sent' | 'signed' | 'not_relevant'
   expected_revenue?: number
   probability?: number
   utm_source?: string
@@ -76,7 +76,7 @@ export async function seedTestLead(overrides?: Partial<TestLead>): Promise<TestL
     name: `Test Lead ${timestamp}`,
     email: `test${timestamp}@example.com`,
     phone: '0501234567',
-    status: 'new',
+    status: 'not_contacted',
     expected_revenue: 10000,
     probability: 50,
     ...overrides,
@@ -98,12 +98,12 @@ export async function seedTestLead(overrides?: Partial<TestLead>): Promise<TestL
 export async function seedDashboardLeads(): Promise<TestLead[]> {
   const timestamp = Date.now()
   const leads: TestLead[] = [
-    { name: `Test New 1 ${timestamp}`, status: 'new', utm_source: 'google', expected_revenue: 5000 },
-    { name: `Test New 2 ${timestamp}`, status: 'new', utm_source: 'google', expected_revenue: 7000 },
-    { name: `Test New 3 ${timestamp}`, status: 'new', utm_source: 'facebook', expected_revenue: 3000 },
-    { name: `Test Contacted 1 ${timestamp}`, status: 'contacted', utm_source: 'facebook', expected_revenue: 10000 },
-    { name: `Test Contacted 2 ${timestamp}`, status: 'contacted', utm_source: 'direct', expected_revenue: 15000 },
-    { name: `Test Customer 1 ${timestamp}`, status: 'customer', utm_source: 'direct', expected_revenue: 25000 },
+    { name: `Test New 1 ${timestamp}`, status: 'not_contacted', utm_source: 'google', expected_revenue: 5000 },
+    { name: `Test New 2 ${timestamp}`, status: 'not_contacted', utm_source: 'google', expected_revenue: 7000 },
+    { name: `Test New 3 ${timestamp}`, status: 'not_contacted', utm_source: 'facebook', expected_revenue: 3000 },
+    { name: `Test Message Sent 1 ${timestamp}`, status: 'message_sent', utm_source: 'facebook', expected_revenue: 10000 },
+    { name: `Test Message Sent 2 ${timestamp}`, status: 'message_sent', utm_source: 'direct', expected_revenue: 15000 },
+    { name: `Test Signed 1 ${timestamp}`, status: 'signed', utm_source: 'direct', expected_revenue: 25000 },
   ]
 
   const results: TestLead[] = []
@@ -158,10 +158,10 @@ export async function getLeadCountsByStatus(): Promise<Record<string, number>> {
   if (error) return {}
 
   const counts: Record<string, number> = {
-    new: 0,
-    contacted: 0,
-    customer: 0,
-    lost: 0,
+    not_contacted: 0,
+    message_sent: 0,
+    signed: 0,
+    not_relevant: 0,
   }
 
   data.forEach((lead: { status: string }) => {

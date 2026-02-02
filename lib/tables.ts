@@ -10,6 +10,11 @@ export function getTableNames() {
     user_profiles: isDev ? 'dev_user_profiles' : 'user_profiles',
     lead_notes: isDev ? 'dev_lead_notes' : 'lead_notes',
     playbooks: isDev ? 'dev_playbooks' : 'playbooks',
+    questionnaires: isDev ? 'dev_questionnaires' : 'questionnaires',
+    questionnaire_fields: isDev ? 'dev_questionnaire_fields' : 'questionnaire_fields',
+    questionnaire_responses: isDev ? 'dev_questionnaire_responses' : 'questionnaire_responses',
+    notifications: isDev ? 'dev_notifications' : 'notifications',
+    tasks: isDev ? 'dev_tasks' : 'tasks',
   }
 }
 
@@ -30,5 +35,23 @@ export const Tables = {
   },
   get playbooks(): 'playbooks' {
     return (process.env.BYPASS_AUTH === 'true' ? 'dev_playbooks' : 'playbooks') as 'playbooks'
+  },
+  // Questionnaire tables
+  get questionnaires(): 'questionnaires' {
+    return (process.env.BYPASS_AUTH === 'true' ? 'dev_questionnaires' : 'questionnaires') as 'questionnaires'
+  },
+  get questionnaire_fields(): 'questionnaire_fields' {
+    return (process.env.BYPASS_AUTH === 'true' ? 'dev_questionnaire_fields' : 'questionnaire_fields') as 'questionnaire_fields'
+  },
+  get questionnaire_responses(): 'questionnaire_responses' {
+    return (process.env.BYPASS_AUTH === 'true' ? 'dev_questionnaire_responses' : 'questionnaire_responses') as 'questionnaire_responses'
+  },
+  // Notification tables
+  get notifications(): 'notifications' {
+    return (process.env.BYPASS_AUTH === 'true' ? 'dev_notifications' : 'notifications') as 'notifications'
+  },
+  // Task tables
+  get tasks(): 'tasks' {
+    return (process.env.BYPASS_AUTH === 'true' ? 'dev_tasks' : 'tasks') as 'tasks'
   },
 }

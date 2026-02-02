@@ -157,6 +157,246 @@ export type Database = {
           },
         ]
       }
+      questionnaires: {
+        Row: {
+          id: string
+          slug: string
+          name: string
+          description: string | null
+          category: string | null
+          tags: Json
+          settings: Json
+          is_active: boolean
+          display_order: number
+          created_at: string | null
+          updated_at: string | null
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          slug: string
+          name: string
+          description?: string | null
+          category?: string | null
+          tags?: Json
+          settings?: Json
+          is_active?: boolean
+          display_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          slug?: string
+          name?: string
+          description?: string | null
+          category?: string | null
+          tags?: Json
+          settings?: Json
+          is_active?: boolean
+          display_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+          created_by?: string | null
+        }
+        Relationships: []
+      }
+      questionnaire_fields: {
+        Row: {
+          id: string
+          questionnaire_id: string
+          slug: string
+          label: string
+          field_type: string
+          config: Json
+          is_required: boolean
+          display_order: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          questionnaire_id: string
+          slug: string
+          label: string
+          field_type?: string
+          config?: Json
+          is_required?: boolean
+          display_order?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          questionnaire_id?: string
+          slug?: string
+          label?: string
+          field_type?: string
+          config?: Json
+          is_required?: boolean
+          display_order?: number
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questionnaire_fields_questionnaire_id_fkey"
+            columns: ["questionnaire_id"]
+            isOneToOne: false
+            referencedRelation: "questionnaires"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      questionnaire_responses: {
+        Row: {
+          id: string
+          questionnaire_id: string
+          target_type: string
+          target_id: string
+          respondent_id: string | null
+          answers: Json
+          status: string
+          started_at: string | null
+          completed_at: string | null
+          created_at: string | null
+          updated_at: string | null
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          questionnaire_id: string
+          target_type: string
+          target_id: string
+          respondent_id?: string | null
+          answers?: Json
+          status?: string
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          questionnaire_id?: string
+          target_type?: string
+          target_id?: string
+          respondent_id?: string | null
+          answers?: Json
+          status?: string
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questionnaire_responses_questionnaire_id_fkey"
+            columns: ["questionnaire_id"]
+            isOneToOne: false
+            referencedRelation: "questionnaires"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          body: string | null
+          entity_type: string | null
+          entity_id: string | null
+          is_read: boolean
+          read_at: string | null
+          created_at: string | null
+          metadata: Json
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          body?: string | null
+          entity_type?: string | null
+          entity_id?: string | null
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string | null
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          body?: string | null
+          entity_type?: string | null
+          entity_id?: string | null
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string | null
+          metadata?: Json
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          created_by: string
+          assigned_to: string | null
+          lead_id: string | null
+          status: string
+          priority: string
+          due_date: string | null
+          completed_at: string | null
+          created_at: string | null
+          updated_at: string | null
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          created_by: string
+          assigned_to?: string | null
+          lead_id?: string | null
+          status?: string
+          priority?: string
+          due_date?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          created_by?: string
+          assigned_to?: string | null
+          lead_id?: string | null
+          status?: string
+          priority?: string
+          due_date?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           ad_pos: string | null
@@ -167,6 +407,7 @@ export type Database = {
           email: string | null
           expected_revenue: number | null
           first_name: string | null
+          follow_up_at: string | null
           gclid: string | null
           id: string
           ip_address: string | null
@@ -178,6 +419,8 @@ export type Database = {
           phone: string | null
           playbook_id: string | null
           probability: number | null
+          refund_amount: number | null
+          commission_rate: number | null
           referrer: string | null
           source: string | null
           status: string | null
@@ -200,6 +443,7 @@ export type Database = {
           email?: string | null
           expected_revenue?: number | null
           first_name?: string | null
+          follow_up_at?: string | null
           gclid?: string | null
           id?: string
           ip_address?: string | null
@@ -211,6 +455,8 @@ export type Database = {
           phone?: string | null
           playbook_id?: string | null
           probability?: number | null
+          refund_amount?: number | null
+          commission_rate?: number | null
           referrer?: string | null
           source?: string | null
           status?: string | null
@@ -233,6 +479,7 @@ export type Database = {
           email?: string | null
           expected_revenue?: number | null
           first_name?: string | null
+          follow_up_at?: string | null
           gclid?: string | null
           id?: string
           ip_address?: string | null
@@ -244,6 +491,8 @@ export type Database = {
           phone?: string | null
           playbook_id?: string | null
           probability?: number | null
+          refund_amount?: number | null
+          commission_rate?: number | null
           referrer?: string | null
           source?: string | null
           status?: string | null

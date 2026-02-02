@@ -12,38 +12,37 @@ All status synchronization flows from Zoho to Supabase. The CRM application disp
 |---|-------------|--------|----------------|
 | 1 | `not_contacted` | טרם יצרנו קשר | follow_up |
 | 2 | `no_answer` | אין מענה | follow_up |
-| 3 | `contacted` | נוצר קשר | warm |
-| 4 | `message_sent` | נשלחה הודעה | warm |
-| 5 | `meeting_set` | נקבעה שיחה | hot |
-| 6 | `pending_agreement` | בהמתנה להסכם | hot |
-| 7 | `signed` | חתם על הסכם התקשרות | signed |
-| 8 | `under_review` | בבדיקה | signed |
-| 9 | `report_submitted` | הוגש דוח | signed |
-| 10 | `missing_document` | חסר מסמך | signed |
-| 11 | `completed` | הושלם | signed |
-| 12 | `not_relevant` | לא רלוונטי | lost |
-| 13 | `closed_elsewhere` | סגר במקום אחר | lost |
+| 3 | `message_sent` | נשלחה הודעה | warm |
+| 4 | `meeting_set` | נקבעה שיחה | warm |
+| 5 | `pending_agreement` | בהמתנה להסכם | warm |
+| 6 | `signed` | חתם על הסכם התקשרות | signed |
+| 7 | `under_review` | בבדיקה | signed |
+| 8 | `report_submitted` | הוגש דוח | signed |
+| 9 | `missing_document` | חסר מסמך | signed |
+| 10 | `waiting_for_payment` | ממתין להגבייה | signed |
+| 11 | `payment_completed` | גבייה הושלמה | signed |
+| 12 | `not_relevant` | לא רלוונטי | exit |
+| 13 | `closed_elsewhere` | סגר במקום אחר | exit |
 | 14 | `future_interest` | מעוניין בעתיד | future |
 
-## Removed Statuses (migrated)
+## Removed Statuses (February 2026)
 
-These statuses were removed and data was migrated:
+These statuses were removed and migrated:
 
-| Old Status | Hebrew | Migrated To |
-|------------|--------|-------------|
-| `new` | חדש | `not_contacted` |
-| `customer` | לקוח | `signed` |
-| `lost` | אבוד | `not_relevant` |
+| Old Status | Hebrew | Migrated To | Reason |
+|------------|--------|-------------|--------|
+| `contacted` | נוצר קשר | `message_sent` | Too vague, merged into message_sent |
+| `completed` | הושלם | `waiting_for_payment` | Replaced by payment workflow |
+| `paying_customer` | לקוח משלם | `payment_completed` | Simplified payment flow |
 
 ## Pipeline Stages
 
 ```typescript
 PIPELINE_STAGES = {
   follow_up: ['not_contacted', 'no_answer'],
-  warm: ['contacted', 'message_sent'],
-  hot: ['meeting_set', 'pending_agreement'],
-  signed: ['signed', 'under_review', 'report_submitted', 'missing_document', 'completed'],
-  lost: ['not_relevant', 'closed_elsewhere'],
+  warm: ['message_sent', 'meeting_set', 'pending_agreement'],
+  signed: ['signed', 'under_review', 'report_submitted', 'missing_document', 'waiting_for_payment', 'payment_completed'],
+  exit: ['not_relevant', 'closed_elsewhere'],
   future: ['future_interest'],
 }
 ```
@@ -53,9 +52,18 @@ PIPELINE_STAGES = {
 Leads typically progress through the pipeline as follows:
 
 ```
-follow_up -> warm -> hot -> signed -> (operational sub-stages)
-                       \-> lost
-                       \-> future
+follow_up -> warm -> signed -> (operational sub-stages) -> payment workflow
+                 \-> exit (negative: not_relevant, closed_elsewhere)
+                 \-> future
+```
+
+### Payment Workflow
+
+After a lead completes the customer process, they enter the payment workflow:
+
+```
+signed -> under_review -> report_submitted -> waiting_for_payment -> payment_completed
+              \-> missing_document -> (back to review)
 ```
 
 ### Signed Sub-stages (Active Customers)
@@ -63,7 +71,7 @@ follow_up -> warm -> hot -> signed -> (operational sub-stages)
 After a lead signs (`signed`), they can move through operational sub-stages:
 
 ```
-signed -> under_review -> report_submitted -> completed
+signed -> under_review -> report_submitted -> waiting_for_payment -> payment_completed
               \-> missing_document -> (back to review)
 ```
 
@@ -97,11 +105,12 @@ The `STATUS_MAP` in `scripts/sync/reconcile.py` handles Hebrew to English conver
 |--------|---------|
 | טרם יצרנו קשר | not_contacted |
 | אין מענה | no_answer |
-| נוצר קשר | contacted |
 | נשלחה הודעה | message_sent |
 | נקבעה שיחה | meeting_set |
 | בהמתנה להסכם | pending_agreement |
 | חתם על הסכם התקשרות | signed |
+| ממתין להגבייה | waiting_for_payment |
+| גבייה הושלמה | payment_completed |
 | לא רלוונטי | not_relevant |
 | סגר במקום אחר | closed_elsewhere |
 | מעוניין בעתיד | future_interest |
@@ -113,6 +122,9 @@ The `STATUS_MAP` in `scripts/sync/reconcile.py` handles Hebrew to English conver
 | חדש | not_contacted |
 | לקוח | signed |
 | אבוד | not_relevant |
+| נוצר קשר | message_sent |
+| הושלם | waiting_for_payment |
+| לקוח משלם | payment_completed |
 | לפני תיקשרות | not_contacted |
 | רלוונטי לשנה הבאה | future_interest |
 | נשלח הסכם התקשרות | pending_agreement |
@@ -125,4 +137,3 @@ The `STATUS_MAP` in `scripts/sync/reconcile.py` handles Hebrew to English conver
 - `lib/status-flow.ts` - Status flow configuration for quick actions
 - `scripts/sync/reconcile.py` - Reconciliation report generator
 - `scripts/sync/status_sync.py` - Zoho to Supabase sync script
-- `scripts/sync/migrate_statuses.py` - One-time migration script

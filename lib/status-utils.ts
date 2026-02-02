@@ -35,17 +35,16 @@ export function getStatusPipelineStage(status: string | null): PipelineStage {
 export const PIPELINE_LABELS: Record<PipelineStage, string> = {
   follow_up: 'מעקב',
   warm: 'חמים',
-  hot: 'חמים מאוד',
   signed: 'לקוחות פעילים',
-  lost: 'אבודים',
+  exit: 'יציאה ממשפך',
   future: 'עתידי',
 }
 
 /**
  * Get the index of a pipeline stage (for progress indicators)
- * Returns -1 for lost/future stages
+ * Returns -1 for exit/future stages
  */
 export function getPipelineStageIndex(stage: PipelineStage): number {
-  const progressStages: PipelineStage[] = ['follow_up', 'warm', 'hot', 'signed']
+  const progressStages: PipelineStage[] = ['follow_up', 'warm', 'signed']
   return progressStages.indexOf(stage)
 }

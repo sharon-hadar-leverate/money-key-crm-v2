@@ -50,16 +50,16 @@ from scripts.sync.reconcile import (
 
 
 # Valid statuses in our system (14 canonical statuses)
+# Removed: contacted, completed, paying_customer
 VALID_STATUSES = {
     # Follow-up
     'not_contacted', 'no_answer',
-    # Warm
-    'contacted', 'message_sent',
-    # Hot
-    'meeting_set', 'pending_agreement',
+    # Warm (includes meeting_set and pending_agreement)
+    'message_sent', 'meeting_set', 'pending_agreement',
     # Signed (active customers)
-    'signed', 'under_review', 'report_submitted', 'missing_document', 'completed',
-    # Lost
+    'signed', 'under_review', 'report_submitted', 'missing_document',
+    'waiting_for_payment', 'payment_completed',
+    # Exit (יציאה ממשפך)
     'not_relevant', 'closed_elsewhere',
     # Future
     'future_interest',

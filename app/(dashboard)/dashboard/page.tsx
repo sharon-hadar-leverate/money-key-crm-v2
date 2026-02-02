@@ -6,7 +6,9 @@ import { SourcePerformanceTable } from '@/components/dashboard/source-performanc
 import { StatusBreakdownChart } from '@/components/dashboard/status-breakdown-chart'
 import { CampaignChart } from '@/components/dashboard/campaign-chart'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
-import { DashboardHeader } from '@/components/dashboard/dashboard-header'
+import { UpcomingFollowups } from '@/components/dashboard/upcoming-followups'
+import { DateRangeFilter } from '@/components/dashboard/date-range-filter'
+import { Header } from '@/components/layout/header'
 import {
   getLeadKPIs,
   getDailyTrends,
@@ -16,7 +18,7 @@ import {
   getRecentActivity,
   getSourceTrends,
 } from '@/actions/kpis'
-import { getLeads } from '@/actions/leads'
+import { getLeads, getLeadsWithFollowUp } from '@/actions/leads'
 import { endOfDay, startOfDay, format } from 'date-fns'
 
 interface DashboardPageProps {
@@ -34,7 +36,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     ? format(endOfDay(new Date(params.to)), "yyyy-MM-dd'T'HH:mm:ss")
     : undefined
 
-  const [kpis, dailyTrends, sourcePerf, statusBreakdown, campaigns, activities, sourceTrends, leadsResult] = await Promise.all([
+  const [kpis, dailyTrends, sourcePerf, statusBreakdown, campaigns, activities, sourceTrends, leadsResult, followUpLeads] = await Promise.all([
     getLeadKPIs(dateFrom, dateTo),
     getDailyTrends(30, dateFrom, dateTo),
     getSourcePerformance(dateFrom, dateTo),
@@ -43,12 +45,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getRecentActivity(5),
     getSourceTrends(30, dateFrom, dateTo),
     getLeads({ limit: 100 }),
+    getLeadsWithFollowUp(10),
   ])
 
   return (
     <>
       <Suspense fallback={null}>
-        <DashboardHeader />
+        <Header
+          title="לוח בקרה"
+          subtitle="סקירת ביצועים כללית"
+          actions={<DateRangeFilter />}
+        />
       </Suspense>
       <div className="p-6 space-y-6">
         {/* KPI Cards - Pipeline stages */}
@@ -69,8 +76,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <CampaignChart data={campaigns} />
         </div>
 
-        {/* Row 5: Recent Activity */}
-        <RecentActivity activities={activities} />
+        {/* Row 5: Upcoming Follow-ups & Recent Activity */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <UpcomingFollowups leads={followUpLeads} />
+          <RecentActivity activities={activities} />
+        </div>
       </div>
     </>
   )

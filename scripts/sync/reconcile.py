@@ -73,6 +73,7 @@ ZOHO_AUTH_REGIONS = {
 
 # Status mapping from Zoho Hebrew to English
 # Note: חדש, לקוח, אבוד are mapped to their replacements
+# Removed statuses: contacted, completed, paying_customer (14 canonical statuses)
 STATUS_MAP = {
     # Standard statuses
     "חתם על הסכם התקשרות": "signed",
@@ -84,11 +85,16 @@ STATUS_MAP = {
     "סגר במקום אחר": "closed_elsewhere",
     "מעוניין בעתיד": "future_interest",
     "בהמתנה להסכם": "pending_agreement",
-    "נוצר קשר": "contacted",
+    # Payment workflow statuses
+    "ממתין להגבייה": "waiting_for_payment",
+    "גבייה הושלמה": "payment_completed",
     # Mapped statuses (these Zoho statuses map to different CRM statuses)
     "חדש": "not_contacted",        # חדש → טרם יצרנו קשר
     "לקוח": "signed",              # לקוח → חתם על הסכם התקשרות
     "אבוד": "not_relevant",        # אבוד → לא רלוונטי
+    "נוצר קשר": "message_sent",    # נוצר קשר → נשלחה הודעה (contacted removed)
+    "הושלם": "waiting_for_payment", # הושלם → ממתין להגבייה (completed removed)
+    "לקוח משלם": "payment_completed", # לקוח משלם → גבייה הושלמה (paying_customer removed)
     # Alternative spellings / URL-encoded versions
     "לפני תיקשרות": "not_contacted",
     "לפני_תיקשרות": "not_contacted",

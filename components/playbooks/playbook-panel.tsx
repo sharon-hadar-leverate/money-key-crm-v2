@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
-import { BookOpen, ChevronLeft, ChevronRight, RefreshCw, MessageSquare } from 'lucide-react'
+import { BookOpen, ChevronLeft, ChevronRight, RefreshCw, MessageSquare, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PlaybookViewer } from './playbook-viewer'
 import { PlaybookSelector } from './playbook-selector'
@@ -9,7 +9,9 @@ import { setLeadPlaybook } from '@/actions/playbooks'
 import { toast } from 'sonner'
 import type { Playbook } from '@/types/playbooks'
 import type { NoteWithUser } from '@/actions/notes'
+import type { Questionnaire, QuestionnaireResponse, QuestionnaireWithFields } from '@/types/questionnaire'
 import { NotesSection } from '../leads/notes-section'
+import { LeadQuestionnairePanel } from '../questionnaire/lead-questionnaire-panel'
 
 interface PlaybookPanelProps {
   leadId: string
@@ -18,6 +20,11 @@ interface PlaybookPanelProps {
   currentPlaybookId: string | null
   defaultPlaybookId: string | null
   initialNotes?: NoteWithUser[]
+  questionnaires?: {
+    filled: Array<{ questionnaire: Questionnaire; response: QuestionnaireResponse }>
+    unfilled: Questionnaire[]
+    withFields: Map<string, QuestionnaireWithFields>
+  }
 }
 
 export function PlaybookPanel({
@@ -27,9 +34,10 @@ export function PlaybookPanel({
   currentPlaybookId,
   defaultPlaybookId,
   initialNotes = [],
+  questionnaires,
 }: PlaybookPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(initialNotes.length === 0)
-  const [activeTab, setActiveTab] = useState<'playbook' | 'notes'>(initialNotes.length > 0 ? 'notes' : 'playbook')
+  const [activeTab, setActiveTab] = useState<'playbook' | 'notes' | 'questionnaires'>(initialNotes.length > 0 ? 'notes' : 'playbook')
   const [selectedId, setSelectedId] = useState<string | null>(currentPlaybookId)
   const [displayedPlaybook, setDisplayedPlaybook] = useState<Playbook | null>(currentPlaybook)
   const [isPending, startTransition] = useTransition()
@@ -96,6 +104,18 @@ export function PlaybookPanel({
                   <BookOpen className="h-3.5 w-3.5" />
                   הדרכה
                 </button>
+                <button
+                  onClick={() => setActiveTab('questionnaires')}
+                  className={cn(
+                    "px-3 py-2 text-xs font-medium rounded-t-lg transition-all flex items-center gap-2",
+                    activeTab === 'questionnaires'
+                      ? "bg-white border-x border-t border-[#E6E9EF] text-[#00A0B0]"
+                      : "text-[#676879] hover:bg-[#E6E9EF]/50"
+                  )}
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  שאלונים
+                </button>
               </div>
             ) : (
               <div className="w-full flex justify-center py-2">
@@ -147,9 +167,18 @@ export function PlaybookPanel({
                   )}
                 </div>
               </div>
-            ) : (
+            ) : activeTab === 'notes' ? (
               <div className="flex-1 overflow-y-auto">
                 <NotesSection leadId={leadId} initialNotes={initialNotes} isEmbedded />
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-4">
+                <LeadQuestionnairePanel
+                  leadId={leadId}
+                  filled={questionnaires?.filled ?? []}
+                  unfilled={questionnaires?.unfilled ?? []}
+                  questionnairesWithFields={questionnaires?.withFields ?? new Map()}
+                />
               </div>
             )}
           </div>
@@ -158,21 +187,27 @@ export function PlaybookPanel({
         {/* Collapsed State Icon & Label */}
         {isCollapsed && (
           <div className="flex-1 flex flex-col items-center py-4 gap-4">
-            <button 
+            <button
               onClick={() => { setIsCollapsed(false); setActiveTab('notes'); }}
               className="p-2 rounded-lg bg-[#FDEBDC] hover:bg-[#FDEBDC]/80 transition-colors"
             >
               <MessageSquare className="h-5 w-5 text-[#E07239]" />
             </button>
-            <button 
+            <button
               onClick={() => { setIsCollapsed(false); setActiveTab('playbook'); }}
               className="p-2 rounded-lg bg-[#E5F6F7] hover:bg-[#E5F6F7]/80 transition-colors"
             >
               <BookOpen className="h-5 w-5 text-[#00A0B0]" />
             </button>
+            <button
+              onClick={() => { setIsCollapsed(false); setActiveTab('questionnaires'); }}
+              className="p-2 rounded-lg bg-[#EDD9FB] hover:bg-[#EDD9FB]/80 transition-colors"
+            >
+              <ClipboardList className="h-5 w-5 text-[#9D5BD2]" />
+            </button>
             <div className="flex flex-col items-center gap-1 [writing-mode:vertical-rl] rotate-180 mt-2">
               <span className="text-[10px] font-bold text-[#323338] tracking-widest uppercase opacity-50">
-                {activeTab === 'notes' ? 'הערות' : 'הדרכה'}
+                {activeTab === 'notes' ? 'הערות' : activeTab === 'playbook' ? 'הדרכה' : 'שאלונים'}
               </span>
             </div>
           </div>

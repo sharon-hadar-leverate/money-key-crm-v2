@@ -5,19 +5,32 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LogOut, Menu, X } from 'lucide-react'
+import { Bell, LogOut, Menu, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import moneyKeyLogo from '@/app/assets/moneykey-linkdin3.png'
 import dashboardIcon from '@/app/assets/dahsboard_no_bg.png'
 import leadsIcon from '@/app/assets/lead_table_no_bg.png'
 import manualsIcon from '@/app/assets/manuals_no_bg.png'
+import assessmentIcon from '@/app/assets/recomandations_no_bg.png'
 import settingsIcon from '@/app/assets/settings_no_bg.png'
+import type { LucideIcon } from 'lucide-react'
+import type { StaticImageData } from 'next/image'
 
-const navigation = [
+type NavItem = {
+  name: string
+  href: string
+} & (
+  | { image: StaticImageData; icon?: never }
+  | { icon: LucideIcon; image?: never }
+)
+
+const navigation: NavItem[] = [
   { name: 'לוח בקרה', href: '/dashboard', image: dashboardIcon },
   { name: 'לידים', href: '/leads', image: leadsIcon },
   { name: 'הדרכות', href: '/playbooks', image: manualsIcon },
+  { name: 'משימות', href: '/tasks', image: assessmentIcon },
+  { name: 'התראות', href: '/notifications', icon: Bell },
   { name: 'הגדרות', href: '/settings', image: settingsIcon },
 ]
 
@@ -112,13 +125,17 @@ export function Sidebar() {
                   {isActive && (
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-[#00A0B0] rounded-r-full" />
                   )}
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    width={24}
-                    height={24}
-                    className="shrink-0"
-                  />
+                  {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      width={24}
+                      height={24}
+                      className="shrink-0"
+                    />
+                  ) : (
+                    <item.icon className="h-6 w-6 shrink-0" />
+                  )}
                   {item.name}
                 </Link>
               )

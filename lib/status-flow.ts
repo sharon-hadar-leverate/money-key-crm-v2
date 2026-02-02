@@ -9,7 +9,6 @@ import type { LeadStatus } from '@/types/leads'
  */
 export const HIDDEN_STATUSES: LeadStatus[] = [
   'not_contacted',    // טרם יצרנו קשר - initial state, don't offer as action
-  'contacted',        // נוצר קשר - intermediate, prefer more specific
   'pending_agreement', // בהמתנה להסכם - intermediate
   'future_interest',  // מעוניין בעתיד - rarely selected manually
 ]
@@ -27,34 +26,32 @@ export function isHiddenStatus(status: LeadStatus): boolean {
  * Edit this file to change which statuses appear as "quick actions"
  * for each status in the lead detail page.
  *
- * Canonical 14 statuses
+ * Canonical 14 statuses (removed: contacted, completed, paying_customer)
  */
 export const STATUS_FLOW: Record<LeadStatus, LeadStatus[]> = {
   // === FOLLOW-UP ===
-  'not_contacted': ['contacted', 'no_answer', 'not_relevant'],
-  'no_answer': ['contacted', 'message_sent', 'not_relevant', 'future_interest'],
+  'not_contacted': ['message_sent', 'no_answer', 'not_relevant'],
+  'no_answer': ['message_sent', 'not_relevant', 'future_interest'],
 
   // === WARM ===
-  'contacted': ['meeting_set', 'message_sent', 'pending_agreement', 'not_relevant'],
-  'message_sent': ['contacted', 'meeting_set', 'no_answer', 'future_interest'],
-
-  // === HOT ===
+  'message_sent': ['meeting_set', 'no_answer', 'future_interest'],
   'meeting_set': ['pending_agreement', 'signed', 'not_relevant', 'closed_elsewhere'],
   'pending_agreement': ['signed', 'not_relevant', 'closed_elsewhere'],
 
   // === SIGNED (active customers) ===
-  'signed': ['under_review', 'report_submitted', 'missing_document', 'completed'],
-  'under_review': ['report_submitted', 'missing_document', 'completed'],
-  'report_submitted': ['completed', 'missing_document'],
-  'missing_document': ['under_review', 'report_submitted', 'completed'],
-  'completed': ['signed'],
+  'signed': ['under_review', 'report_submitted', 'missing_document', 'waiting_for_payment'],
+  'under_review': ['report_submitted', 'missing_document', 'waiting_for_payment'],
+  'report_submitted': ['waiting_for_payment', 'missing_document'],
+  'missing_document': ['under_review', 'report_submitted', 'waiting_for_payment'],
+  'waiting_for_payment': ['payment_completed', 'not_relevant'],
+  'payment_completed': [], // Terminal state - collection complete
 
-  // === LOST ===
+  // === EXIT (יציאה ממשפך) ===
   'not_relevant': ['not_contacted', 'future_interest'],
   'closed_elsewhere': ['not_contacted', 'future_interest'],
 
   // === FUTURE ===
-  'future_interest': ['contacted', 'not_contacted'],
+  'future_interest': ['message_sent', 'not_contacted'],
 }
 
 /**

@@ -103,14 +103,25 @@ export class LeadDetailPage extends BasePage {
   /**
    * Click a status change button
    */
-  async clickStatusButton(status: 'new' | 'contacted' | 'customer' | 'lost'): Promise<void> {
-    const statusLabels = {
-      new: 'חדש',
-      contacted: 'נוצר קשר',
-      customer: 'לקוח',
-      lost: 'אבוד',
+  async clickStatusButton(status: string): Promise<void> {
+    const statusLabels: Record<string, string> = {
+      not_contacted: 'טרם יצרנו קשר',
+      no_answer: 'אין מענה',
+      message_sent: 'נשלחה הודעה',
+      meeting_set: 'נקבעה שיחה',
+      pending_agreement: 'בהמתנה להסכם',
+      signed: 'חתם על הסכם התקשרות',
+      under_review: 'בבדיקה',
+      report_submitted: 'הוגש דוח',
+      missing_document: 'חסר מסמך',
+      waiting_for_payment: 'ממתין להגבייה',
+      payment_completed: 'גבייה הושלמה',
+      not_relevant: 'לא רלוונטי',
+      closed_elsewhere: 'סגר במקום אחר',
+      future_interest: 'מעוניין בעתיד',
     }
-    await this.page.getByRole('button', { name: statusLabels[status] }).click()
+    const label = statusLabels[status] || status
+    await this.page.getByRole('button', { name: label }).click()
     await this.expectSuccessToast('הסטטוס עודכן בהצלחה')
   }
 

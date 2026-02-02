@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -22,7 +22,8 @@ import { StatusBadge } from './status-badge'
 import { LeadAvatar } from './lead-avatar'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { MoreHorizontal, Search, Eye, Pencil, Trash, Users, Filter, ChevronDown, MessageSquare, Copy, Check } from 'lucide-react'
-import { softDeleteLead, updateLeadStatus } from '@/actions/leads'
+import { softDeleteLead, updateLeadStatus, getLeads } from '@/actions/leads'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PIPELINE_STAGES, STATUS_CONFIG } from '@/types/leads'
 import { PIPELINE_LABELS } from '@/lib/status-utils'
@@ -41,6 +42,8 @@ interface LeadsTableProps {
   initialStatuses?: LeadStatus[]
   noteCounts?: Record<string, number>
 }
+
+const PAGE_SIZE = 50
 
 // Inline status dropdown component
 function InlineStatusDropdown({
@@ -115,7 +118,15 @@ function InlineStatusDropdown({
   )
 }
 
-export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, noteCounts = {} }: LeadsTableProps) {
+export function LeadsTable({ leads: initialLeads, totalCount, initialStage, initialStatuses, noteCounts: initialNoteCounts = {} }: LeadsTableProps) {
+  // Infinite scroll state
+  const [allLeads, setAllLeads] = useState<Lead[]>(initialLeads)
+  const [noteCounts] = useState<Record<string, number>>(initialNoteCounts)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(initialLeads.length < totalCount)
+  const [offset, setOffset] = useState(initialLeads.length)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
   const [search, setSearch] = useState('')
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
@@ -133,6 +144,51 @@ export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, n
   const [statusFilterOpen, setStatusFilterOpen] = useState(false)
   const [statusSearchQuery, setStatusSearchQuery] = useState('')
 
+  // Load more function for infinite scroll
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return
+    setIsLoadingMore(true)
+
+    try {
+      const { data: newLeads } = await getLeads({
+        limit: PAGE_SIZE,
+        offset,
+      })
+
+      if (newLeads.length > 0) {
+        setAllLeads(prev => [...prev, ...newLeads])
+        setOffset(prev => prev + newLeads.length)
+        setHasMore(offset + newLeads.length < totalCount)
+      } else {
+        setHasMore(false)
+      }
+    } catch (error) {
+      console.error('Failed to load more leads:', error)
+      toast.error('שגיאה בטעינת לידים נוספים')
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [isLoadingMore, hasMore, offset, totalCount])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          loadMore()
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    )
+
+    observer.observe(sentinel)
+
+    return () => observer.disconnect()
+  }, [hasMore, isLoadingMore, loadMore])
+
   const toggleStatus = (status: LeadStatus) => {
     const newFilter = new Set(statusFilter)
     if (newFilter.has(status)) {
@@ -148,7 +204,7 @@ export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, n
   }
 
   const filteredLeads = useMemo(() =>
-    leads.filter((lead) => {
+    allLeads.filter((lead) => {
       // Text search filter
       if (search) {
         const searchLower = search.toLowerCase()
@@ -178,7 +234,7 @@ export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, n
 
       return true
     }),
-    [leads, search, dateRange, statusFilter]
+    [allLeads, search, dateRange, statusFilter]
   )
 
   const handleStatusChange = async (id: string, status: LeadStatus) => {
@@ -543,6 +599,24 @@ export function LeadsTable({ leads, totalCount, initialStage, initialStatuses, n
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Infinite scroll sentinel and loading indicator */}
+        <div
+          ref={sentinelRef}
+          className="flex items-center justify-center py-4"
+        >
+          {isLoadingMore && (
+            <div className="flex items-center gap-2 text-[#676879]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">טוען לידים נוספים...</span>
+            </div>
+          )}
+          {!hasMore && allLeads.length > 0 && allLeads.length >= totalCount && (
+            <span className="text-sm text-[#9B9BAD]">
+              הצגת כל {totalCount} הלידים
+            </span>
+          )}
         </div>
       </div>
     </div>

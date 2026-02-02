@@ -9,11 +9,11 @@ import { PlaybookPanel, PlaybookMobileSheet } from '@/components/playbooks'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import newLeadIcon from '@/app/assets/new_lead_no_bg.png'
 import newCustomerIcon from '@/app/assets/new_costumer_no_bg.png'
-import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent, MessageSquare, Copy, Check, ChevronDown, Search, FileText, Plus } from 'lucide-react'
+import { Pencil, Save, X, Phone, Mail, Calendar, Wallet, Globe, ExternalLink, User, History, TrendingUp, Percent, MessageSquare, Copy, Check, ChevronDown, Search, FileText, Banknote, Calculator, ClipboardList } from 'lucide-react'
 import { updateLead, updateLeadStatus } from '@/actions/leads'
 import { toast } from 'sonner'
 import { STATUS_CONFIG, PIPELINE_STAGES } from '@/types/leads'
-import { getStatusPipelineStage, PIPELINE_LABELS, getPipelineStageIndex } from '@/lib/status-utils'
+import { getStatusPipelineStage, PIPELINE_LABELS } from '@/lib/status-utils'
 import { getQuickActions, getVisibleStatuses } from '@/lib/status-flow'
 import { cn } from '@/lib/utils'
 import {
@@ -24,6 +24,9 @@ import {
 import type { Lead, LeadEvent, LeadStatus, PipelineStage } from '@/types/leads'
 import type { NoteWithUser } from '@/actions/notes'
 import type { Playbook } from '@/types/playbooks'
+import type { Questionnaire, QuestionnaireResponse, QuestionnaireWithFields } from '@/types/questionnaire'
+import { LeadQuestionnaireTab } from '@/components/questionnaire'
+import { FollowUpButton } from './follow-up-button'
 
 interface LeadDetailProps {
   lead: Lead
@@ -32,33 +35,60 @@ interface LeadDetailProps {
   playbooks?: Playbook[]
   currentPlaybook?: Playbook | null
   defaultPlaybookId?: string | null
+  questionnaires?: {
+    filled: Array<{ questionnaire: Questionnaire; response: QuestionnaireResponse }>
+    unfilled: Questionnaire[]
+    withFields: Map<string, QuestionnaireWithFields>
+  }
 }
 
-// Pipeline Progress visual indicator
-const PROGRESS_STAGES: PipelineStage[] = ['follow_up', 'warm', 'hot', 'signed']
+// Pipeline Progress visual indicator with 4 stages including payment
+const PAYMENT_PROGRESS_STATUSES = ['waiting_for_payment', 'payment_completed']
+
+// Visual progress stages (not the same as pipeline stages)
+const VISUAL_PROGRESS_STAGES = [
+  { key: 'follow_up', label: 'מעקב' },
+  { key: 'warm', label: 'חמים' },
+  { key: 'signed', label: 'לקוחות פעילים' },
+  { key: 'payment', label: 'בתהליך גבייה' },
+] as const
 
 function PipelineProgress({ currentStatus }: { currentStatus: string | null }) {
   const currentStage = getStatusPipelineStage(currentStatus)
-  const currentIndex = getPipelineStageIndex(currentStage)
+  const isPaymentStatus = PAYMENT_PROGRESS_STATUSES.includes(currentStatus || '')
 
-  // Don't show progress for lost/future stages
-  if (currentStage === 'lost' || currentStage === 'future') return null
+  // Don't show progress for exit/future stages
+  if (currentStage === 'exit' || currentStage === 'future') return null
+
+  // Calculate visual index (0-3)
+  const getVisualIndex = () => {
+    if (isPaymentStatus) return 3 // payment stage
+    if (currentStage === 'signed') return 2
+    if (currentStage === 'warm') return 1
+    return 0 // follow_up
+  }
+
+  const currentIndex = getVisualIndex()
 
   return (
     <div className="mt-4">
       <div className="flex items-center gap-1">
-        {PROGRESS_STAGES.map((stage, i) => (
-          <div key={stage} className="flex-1 flex items-center gap-1">
+        {VISUAL_PROGRESS_STAGES.map((stage, i) => (
+          <div key={stage.key} className="flex-1 flex items-center gap-1">
             <div
               className={cn(
                 "h-1.5 flex-1 rounded-full transition-colors",
-                i <= currentIndex ? "bg-[#00A0B0]" : "bg-[#E6E9EF]"
+                i <= currentIndex
+                  ? i === 3 ? "bg-[#00854D]" : "bg-[#00A0B0]"
+                  : "bg-[#E6E9EF]"
               )}
             />
-            {i < PROGRESS_STAGES.length - 1 && (
+            {i < VISUAL_PROGRESS_STAGES.length - 1 && (
               <div className={cn(
                 "w-1.5 h-1.5 rounded-full shrink-0",
-                i < currentIndex ? "bg-[#00A0B0]" : "bg-[#E6E9EF]"
+                i < currentIndex
+                  ? i >= 2 ? "bg-[#00854D]" : "bg-[#00A0B0]"
+                  : "bg-[#E6E9EF]"
               )} />
             )}
           </div>
@@ -66,15 +96,17 @@ function PipelineProgress({ currentStatus }: { currentStatus: string | null }) {
       </div>
       {/* Stage labels */}
       <div className="flex items-center gap-1 mt-1.5">
-        {PROGRESS_STAGES.map((stage, i) => (
-          <div key={stage} className="flex-1 flex items-center gap-1">
+        {VISUAL_PROGRESS_STAGES.map((stage, i) => (
+          <div key={stage.key} className="flex-1 flex items-center gap-1">
             <span className={cn(
               "flex-1 text-[10px] text-center",
-              i <= currentIndex ? "text-[#00A0B0] font-medium" : "text-[#9B9BAD]"
+              i <= currentIndex
+                ? i === 3 ? "text-[#00854D] font-medium" : "text-[#00A0B0] font-medium"
+                : "text-[#9B9BAD]"
             )}>
-              {PIPELINE_LABELS[stage]}
+              {stage.label}
             </span>
-            {i < PROGRESS_STAGES.length - 1 && (
+            {i < VISUAL_PROGRESS_STAGES.length - 1 && (
               <div className="w-1.5 shrink-0" />
             )}
           </div>
@@ -150,7 +182,7 @@ function StatusSelector({
           <span className="text-[#9B9BAD]">שלב:</span>
           <span className={cn(
             "px-2 py-0.5 rounded-md font-medium",
-            currentStage === 'lost' ? "bg-[#FFD6D9] text-[#D83A52]" :
+            currentStage === 'exit' ? "bg-[#FFD6D9] text-[#D83A52]" :
             currentStage === 'future' ? "bg-[#D4F4F7] text-[#00A0B0]" :
             currentStage === 'signed' ? "bg-[#D4F4DD] text-[#00854D]" :
             "bg-[#F5F6F8] text-[#676879]"
@@ -260,9 +292,9 @@ function StatusSelector({
 }
 
 // Tab type
-type TabType = 'card' | 'history'
+type TabType = 'card' | 'history' | 'questionnaires'
 
-export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPlaybook = null, defaultPlaybookId = null }: LeadDetailProps) {
+export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPlaybook = null, defaultPlaybookId = null, questionnaires }: LeadDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('card')
   const [formData, setFormData] = useState({
@@ -273,6 +305,8 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
     last_name: lead.last_name || '',
     expected_revenue: lead.expected_revenue?.toString() || '',
     probability: lead.probability?.toString() || '',
+    refund_amount: lead.refund_amount?.toString() || '',
+    commission_rate: lead.commission_rate?.toString() || '',
   })
 
   const handleSave = async () => {
@@ -281,6 +315,8 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
       ...formData,
       expected_revenue: formData.expected_revenue ? parseFloat(formData.expected_revenue) : undefined,
       probability: formData.probability ? parseInt(formData.probability) : undefined,
+      refund_amount: formData.refund_amount ? parseFloat(formData.refund_amount) : undefined,
+      commission_rate: formData.commission_rate ? parseFloat(formData.commission_rate) : undefined,
     })
 
     if (result.success) {
@@ -318,6 +354,7 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
   const tabs = [
     { key: 'card' as TabType, label: 'כרטיס ליד', icon: FileText },
     { key: 'history' as TabType, label: 'היסטוריה', icon: History },
+    { key: 'questionnaires' as TabType, label: 'שאלונים', icon: ClipboardList },
   ]
 
   return (
@@ -380,26 +417,32 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
                       <PipelineProgress currentStatus={lead.status} />
                     </div>
                   </div>
-                  <button
-                    onClick={() => setIsEditing(!isEditing)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                      isEditing
-                        ? 'bg-[#F5F6F8] border border-[#E6E9EF] text-[#676879] hover:text-[#323338]'
-                        : 'bg-[#00A0B0] text-white hover:bg-[#008A99]'
-                    }`}
-                  >
-                    {isEditing ? (
-                      <>
-                        <X className="h-4 w-4" />
-                        ביטול
-                      </>
-                    ) : (
-                      <>
-                        <Pencil className="h-4 w-4" />
-                        עריכה
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <FollowUpButton
+                      leadId={lead.id}
+                      currentFollowUp={lead.follow_up_at}
+                    />
+                    <button
+                      onClick={() => setIsEditing(!isEditing)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                        isEditing
+                          ? 'bg-[#F5F6F8] border border-[#E6E9EF] text-[#676879] hover:text-[#323338]'
+                          : 'bg-[#00A0B0] text-white hover:bg-[#008A99]'
+                      }`}
+                    >
+                      {isEditing ? (
+                        <>
+                          <X className="h-4 w-4" />
+                          ביטול
+                        </>
+                      ) : (
+                        <>
+                          <Pencil className="h-4 w-4" />
+                          עריכה
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Status Selector - Clean, minimal UI */}
@@ -504,110 +547,135 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
                 </div>
 
                 {isEditing ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-sm text-[#676879]">הכנסה צפויה (₪)</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-[#676879]">גובה החזר (₪)</label>
                       <input
                         type="number"
-                        value={formData.expected_revenue}
-                        onChange={(e) => setFormData({ ...formData, expected_revenue: e.target.value })}
-                        className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
+                        value={formData.refund_amount}
+                        onChange={(e) => setFormData({ ...formData, refund_amount: e.target.value })}
+                        className="w-full h-9 px-3 text-sm rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm text-[#676879]">הסתברות (%)</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-[#676879]">אחוז עמלה (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.commission_rate}
+                        onChange={(e) => setFormData({ ...formData, commission_rate: e.target.value })}
+                        className="w-full h-9 px-3 text-sm rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-[#676879]">הסתברות (%)</label>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         value={formData.probability}
                         onChange={(e) => setFormData({ ...formData, probability: e.target.value })}
-                        className="w-full h-10 px-4 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
+                        className="w-full h-9 px-3 text-sm rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
                       />
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-5">
-                    {/* Expected Revenue Metric */}
+                  <div className="space-y-3">
+                    {/* Calculated Expected Income - Top Row (Green) */}
                     <div className={cn(
-                      "p-4 rounded-xl border transition-all duration-300 group relative",
-                      !lead.expected_revenue 
-                        ? "bg-amber-50/30 border-amber-200/60 shadow-sm" 
-                        : "bg-white border-[#E6E9EF] shadow-sm hover:border-[#00A0B0]/30"
+                      "p-3 rounded-xl border transition-all duration-300",
+                      (!lead.refund_amount || !lead.commission_rate)
+                        ? "bg-[#F5F6F8] border-[#E6E9EF]"
+                        : "bg-[#D4F4DD]/30 border-[#00854D]/20"
                     )}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2 text-[#676879] text-xs font-medium uppercase tracking-wider">
-                          <TrendingUp className={cn(
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-[#676879] text-xs font-medium">
+                          <Calculator className={cn(
                             "w-3.5 h-3.5",
-                            !lead.expected_revenue ? "text-amber-500" : "text-[#00A0B0]"
+                            (!lead.refund_amount || !lead.commission_rate) ? "text-[#9B9BAD]" : "text-[#00854D]"
                           )} />
                           הכנסה צפויה
                         </div>
-                        {!lead.expected_revenue && (
-                          <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                        {(!lead.refund_amount || !lead.commission_rate) ? (
+                          <span className="text-sm text-[#9B9BAD]">—</span>
+                        ) : (
+                          <div className="text-left">
+                            <span className="text-lg font-bold text-[#00854D]">
+                              {formatCurrency(lead.refund_amount * (lead.commission_rate / 100))}
+                            </span>
+                            <span className="text-xs text-[#676879] mr-2">
+                              ({formatCurrency(lead.refund_amount)} × {lead.commission_rate}%)
+                            </span>
+                          </div>
                         )}
                       </div>
-                      
-                      {!lead.expected_revenue ? (
-                        <button 
-                          onClick={() => setIsEditing(true)}
-                          className="mt-1 w-full py-3 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-amber-200 bg-white/50 text-amber-600 hover:bg-amber-50 hover:border-amber-400 hover:text-amber-700 transition-all"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span className="text-sm font-bold">הזן הכנסה</span>
-                        </button>
-                      ) : (
-                        <div className="text-2xl font-bold text-[#323338] number-display">
-                          {formatCurrency(lead.expected_revenue)}
-                        </div>
-                      )}
                     </div>
 
-                    {/* Probability Metric */}
-                    <div className={cn(
-                      "p-4 rounded-xl border transition-all duration-300 group relative",
-                      !lead.probability 
-                        ? "bg-amber-50/30 border-amber-200/60 shadow-sm" 
-                        : "bg-white border-[#E6E9EF] shadow-sm hover:border-[#00A0B0]/30"
-                    )}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2 text-[#676879] text-xs font-medium uppercase tracking-wider">
-                          <Percent className={cn(
-                            "w-3.5 h-3.5",
-                            !lead.probability ? "text-amber-500" : "text-[#9D5BD2]"
-                          )} />
-                          הסתברות סגירה
+                    {/* Three Columns Row */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* Refund Amount */}
+                      <div className={cn(
+                        "p-3 rounded-xl border transition-all duration-300 cursor-pointer hover:border-[#00A0B0]/50",
+                        !lead.refund_amount
+                          ? "bg-amber-50/30 border-amber-200/60"
+                          : "bg-white border-[#E6E9EF]"
+                      )}
+                      onClick={() => !lead.refund_amount && setIsEditing(true)}
+                      >
+                        <div className="flex items-center gap-1.5 text-[#676879] text-[10px] font-medium mb-1">
+                          <Banknote className={cn("w-3 h-3", !lead.refund_amount ? "text-amber-500" : "text-[#00A0B0]")} />
+                          גובה החזר
+                          {!lead.refund_amount && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
                         </div>
-                        {!lead.probability && (
-                          <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                        {lead.refund_amount ? (
+                          <div className="text-sm font-bold text-[#323338]">{formatCurrency(lead.refund_amount)}</div>
+                        ) : (
+                          <div className="text-xs text-amber-600">+ הזן</div>
                         )}
                       </div>
 
-                      {!lead.probability ? (
-                        <button 
-                          onClick={() => setIsEditing(true)}
-                          className="w-full py-3 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-amber-200 bg-white/50 text-amber-600 hover:bg-amber-50 hover:border-amber-400 hover:text-amber-700 transition-all"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span className="text-sm font-bold">קבע הסתברות</span>
-                        </button>
-                      ) : (
-                        <>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-bold text-[#323338]">{lead.probability}%</span>
-                          </div>
-                          <div className="h-2 w-full bg-[#ECEDF0] rounded-full overflow-hidden">
-                            <div 
-                              className={cn(
-                                "h-full transition-all duration-1000 ease-out rounded-full",
-                                (lead.probability ?? 0) > 70 ? "bg-[#00854D]" : 
-                                (lead.probability ?? 0) > 30 ? "bg-[#00A0B0]" : "bg-[#D83A52]"
-                              )}
-                              style={{ width: `${lead.probability}%` }}
-                            />
-                          </div>
-                        </>
+                      {/* Commission Rate */}
+                      <div className={cn(
+                        "p-3 rounded-xl border transition-all duration-300 cursor-pointer hover:border-[#9D5BD2]/50",
+                        !lead.commission_rate
+                          ? "bg-amber-50/30 border-amber-200/60"
+                          : "bg-white border-[#E6E9EF]"
                       )}
+                      onClick={() => !lead.commission_rate && setIsEditing(true)}
+                      >
+                        <div className="flex items-center gap-1.5 text-[#676879] text-[10px] font-medium mb-1">
+                          <Percent className={cn("w-3 h-3", !lead.commission_rate ? "text-amber-500" : "text-[#9D5BD2]")} />
+                          אחוז עמלה
+                          {!lead.commission_rate && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
+                        </div>
+                        {lead.commission_rate ? (
+                          <div className="text-sm font-bold text-[#323338]">{lead.commission_rate}%</div>
+                        ) : (
+                          <div className="text-xs text-amber-600">+ הזן</div>
+                        )}
+                      </div>
+
+                      {/* Probability */}
+                      <div className={cn(
+                        "p-3 rounded-xl border transition-all duration-300 cursor-pointer hover:border-[#00A0B0]/50",
+                        !lead.probability
+                          ? "bg-amber-50/30 border-amber-200/60"
+                          : "bg-white border-[#E6E9EF]"
+                      )}
+                      onClick={() => !lead.probability && setIsEditing(true)}
+                      >
+                        <div className="flex items-center gap-1.5 text-[#676879] text-[10px] font-medium mb-1">
+                          <TrendingUp className={cn("w-3 h-3", !lead.probability ? "text-amber-500" : "text-[#00A0B0]")} />
+                          הסתברות
+                          {!lead.probability && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
+                        </div>
+                        {lead.probability ? (
+                          <div className="text-sm font-bold text-[#323338]">{lead.probability}%</div>
+                        ) : (
+                          <div className="text-xs text-amber-600">+ הזן</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -695,7 +763,7 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
               </div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'history' ? (
           // History/Timeline Tab
           <div className="monday-card overflow-hidden">
             <div className="px-5 py-4 border-b border-[#E6E9EF]">
@@ -713,6 +781,14 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
               <Timeline events={events} />
             </div>
           </div>
+        ) : (
+          // Questionnaires Tab
+          <LeadQuestionnaireTab
+            leadId={lead.id}
+            filled={questionnaires?.filled ?? []}
+            unfilled={questionnaires?.unfilled ?? []}
+            questionnairesWithFields={questionnaires?.withFields ?? new Map()}
+          />
         )}
       </div>
 
@@ -724,6 +800,7 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
         currentPlaybookId={lead.playbook_id ?? null}
         defaultPlaybookId={defaultPlaybookId}
         initialNotes={notes}
+        questionnaires={questionnaires}
       />
 
       {/* Mobile FAB + Bottom Sheet */}
@@ -734,6 +811,7 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
         currentPlaybookId={lead.playbook_id ?? null}
         defaultPlaybookId={defaultPlaybookId}
         initialNotes={notes}
+        questionnaires={questionnaires}
       />
     </div>
   )

@@ -9,15 +9,13 @@ export type LeadEvent = Database['public']['Tables']['lead_events']['Row']
 export type LeadEventInsert = Database['public']['Tables']['lead_events']['Insert']
 
 // Application-level enums and types
-// Canonical 14 statuses
+// Canonical 14 statuses (removed: contacted, completed, paying_customer)
 export const LEAD_STATUSES = [
   // Follow-up stage
   'not_contacted',    // טרם יצרנו קשר
   'no_answer',        // אין מענה
-  // Warm stage
-  'contacted',        // נוצר קשר
+  // Warm stage (includes meeting_set and pending_agreement)
   'message_sent',     // נשלחה הודעה
-  // Hot stage
   'meeting_set',      // נקבעה שיחה
   'pending_agreement', // בהמתנה להסכם
   // Signed stage (active customers)
@@ -25,8 +23,9 @@ export const LEAD_STATUSES = [
   'under_review',     // בבדיקה
   'report_submitted', // הוגש דוח
   'missing_document', // חסר מסמך
-  'completed',        // הושלם
-  // Lost stage
+  'waiting_for_payment', // ממתין להגבייה
+  'payment_completed',   // גבייה הושלמה
+  // Exit stage (יציאה ממשפך)
   'not_relevant',     // לא רלוונטי
   'closed_elsewhere', // סגר במקום אחר
   // Future stage
@@ -37,10 +36,9 @@ export type LeadStatus = typeof LEAD_STATUSES[number]
 // Pipeline stages for grouping statuses
 export const PIPELINE_STAGES = {
   follow_up: ['not_contacted', 'no_answer'],
-  warm: ['contacted', 'message_sent'],
-  hot: ['meeting_set', 'pending_agreement'],
-  signed: ['signed', 'under_review', 'report_submitted', 'missing_document', 'completed'],
-  lost: ['not_relevant', 'closed_elsewhere'],
+  warm: ['message_sent', 'meeting_set', 'pending_agreement'],
+  signed: ['signed', 'under_review', 'report_submitted', 'missing_document', 'waiting_for_payment', 'payment_completed'],
+  exit: ['not_relevant', 'closed_elsewhere'],
   future: ['future_interest'],
 } as const
 export type PipelineStage = keyof typeof PIPELINE_STAGES
@@ -85,14 +83,6 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     pipelineStage: 'follow_up'
   },
   // === Warm statuses ===
-  contacted: {
-    label: 'נוצר קשר',
-    color: 'text-[#D17A00]',
-    bgColor: 'bg-[#FFF0D6]',
-    borderColor: 'border-transparent',
-    cssClass: 'status-contacted',
-    pipelineStage: 'warm'
-  },
   message_sent: {
     label: 'נשלחה הודעה',
     color: 'text-[#D17A00]',
@@ -101,14 +91,14 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     cssClass: 'status-message-sent',
     pipelineStage: 'warm'
   },
-  // === Hot statuses ===
+  // === Warm statuses (continued) ===
   meeting_set: {
     label: 'נקבעה שיחה',
     color: 'text-[#D93D42]',
     bgColor: 'bg-[#FFEBE6]',
     borderColor: 'border-transparent',
     cssClass: 'status-meeting-set',
-    pipelineStage: 'hot'
+    pipelineStage: 'warm'
   },
   pending_agreement: {
     label: 'בהמתנה להסכם',
@@ -116,7 +106,7 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     bgColor: 'bg-[#FFF0D6]',
     borderColor: 'border-transparent',
     cssClass: 'status-pending-agreement',
-    pipelineStage: 'hot'
+    pipelineStage: 'warm'
   },
   // === Signed statuses (active customers) ===
   signed: {
@@ -151,22 +141,30 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     cssClass: 'status-missing-document',
     pipelineStage: 'signed'
   },
-  completed: {
-    label: 'הושלם',
+  waiting_for_payment: {
+    label: 'ממתין להגבייה',
+    color: 'text-[#D17A00]',
+    bgColor: 'bg-[#FFF0D6]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-waiting-for-payment',
+    pipelineStage: 'signed'
+  },
+  payment_completed: {
+    label: 'גבייה הושלמה',
     color: 'text-[#00854D]',
     bgColor: 'bg-[#D4F4DD]',
     borderColor: 'border-[#00854D33]',
-    cssClass: 'status-completed',
+    cssClass: 'status-payment-completed',
     pipelineStage: 'signed'
   },
-  // === Lost statuses ===
+  // === Exit statuses (יציאה ממשפך) ===
   not_relevant: {
     label: 'לא רלוונטי',
     color: 'text-[#D83A52]',
     bgColor: 'bg-[#FFD6D9]',
     borderColor: 'border-transparent',
     cssClass: 'status-not-relevant',
-    pipelineStage: 'lost'
+    pipelineStage: 'exit'
   },
   closed_elsewhere: {
     label: 'סגר במקום אחר',
@@ -174,7 +172,7 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     bgColor: 'bg-[#FFD6D9]',
     borderColor: 'border-transparent',
     cssClass: 'status-closed-elsewhere',
-    pipelineStage: 'lost'
+    pipelineStage: 'exit'
   },
   // === Future status ===
   future_interest: {
@@ -227,6 +225,8 @@ export interface CreateLeadInput {
   source?: string
   expected_revenue?: number
   probability?: number
+  refund_amount?: number
+  commission_rate?: number
   custom_fields?: CustomFields
   utm_source?: string
   utm_medium?: string
@@ -250,6 +250,8 @@ export interface UpdateLeadInput {
   status?: LeadStatus
   expected_revenue?: number
   probability?: number
+  refund_amount?: number
+  commission_rate?: number
   custom_fields?: CustomFields
   is_new?: boolean
 }
@@ -277,14 +279,15 @@ export interface LeadKPIs {
   contactedLeads: number
   customers: number
   lostLeads: number
-  // Pipeline stage counts (new)
-  followUpLeads: number    // new, no_answer, not_contacted
-  warmLeads: number        // contacted, message_sent
-  hotLeads: number         // meeting_set, pending_agreement
-  signedLeads: number      // customer, signed
+  // Pipeline stage counts
+  followUpLeads: number    // not_contacted, no_answer
+  warmLeads: number        // contacted, message_sent, meeting_set, pending_agreement
+  signedLeads: number      // signed, under_review, report_submitted, missing_document, completed, waiting_for_payment, payment_completed
   futureLeads: number      // future_interest
-  // All lost statuses: lost, not_relevant, closed_elsewhere
-  allLostLeads: number
+  // Exit statuses: not_relevant, closed_elsewhere, paying_customer
+  exitLeads: number
+  // Positive exits (paying customers)
+  payingCustomers: number
   // Rates
   conversionRate: number
   totalPipelineValue: number
@@ -304,7 +307,6 @@ export interface TimeSeriesData {
   // Canonical 14 statuses
   not_contacted: number
   no_answer: number
-  contacted: number
   message_sent: number
   meeting_set: number
   pending_agreement: number
@@ -312,7 +314,8 @@ export interface TimeSeriesData {
   under_review: number
   report_submitted: number
   missing_document: number
-  completed: number
+  waiting_for_payment: number
+  payment_completed: number
   not_relevant: number
   closed_elsewhere: number
   future_interest: number

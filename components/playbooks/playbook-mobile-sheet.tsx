@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
-import { BookOpen, MessageSquare, X } from 'lucide-react'
+import { BookOpen, MessageSquare, X, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PlaybookViewer } from './playbook-viewer'
 import { PlaybookSelector } from './playbook-selector'
@@ -9,7 +9,9 @@ import { setLeadPlaybook } from '@/actions/playbooks'
 import { toast } from 'sonner'
 import type { Playbook } from '@/types/playbooks'
 import type { NoteWithUser } from '@/actions/notes'
+import type { Questionnaire, QuestionnaireResponse, QuestionnaireWithFields } from '@/types/questionnaire'
 import { NotesSection } from '../leads/notes-section'
+import { LeadQuestionnairePanel } from '../questionnaire/lead-questionnaire-panel'
 import {
   Sheet,
   SheetContent,
@@ -24,6 +26,11 @@ interface PlaybookMobileSheetProps {
   currentPlaybookId: string | null
   defaultPlaybookId: string | null
   initialNotes?: NoteWithUser[]
+  questionnaires?: {
+    filled: Array<{ questionnaire: Questionnaire; response: QuestionnaireResponse }>
+    unfilled: Questionnaire[]
+    withFields: Map<string, QuestionnaireWithFields>
+  }
 }
 
 export function PlaybookMobileSheet({
@@ -33,9 +40,10 @@ export function PlaybookMobileSheet({
   currentPlaybookId,
   defaultPlaybookId,
   initialNotes = [],
+  questionnaires,
 }: PlaybookMobileSheetProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'playbook' | 'notes'>('notes')
+  const [activeTab, setActiveTab] = useState<'playbook' | 'notes' | 'questionnaires'>('notes')
   const [selectedId, setSelectedId] = useState<string | null>(currentPlaybookId)
   const [displayedPlaybook, setDisplayedPlaybook] = useState<Playbook | null>(currentPlaybook)
   const [isPending, startTransition] = useTransition()
@@ -63,7 +71,7 @@ export function PlaybookMobileSheet({
     })
   }
 
-  const openWithTab = (tab: 'playbook' | 'notes') => {
+  const openWithTab = (tab: 'playbook' | 'notes' | 'questionnaires') => {
     setActiveTab(tab)
     setIsOpen(true)
   }
@@ -92,6 +100,17 @@ export function PlaybookMobileSheet({
           aria-label="הדרכה"
         >
           <BookOpen className="h-5 w-5 text-[#00A0B0]" />
+        </button>
+        <button
+          onClick={() => openWithTab('questionnaires')}
+          className={cn(
+            "p-3 rounded-full shadow-lg transition-all",
+            "bg-[#EDD9FB] hover:bg-[#EDD9FB]/90 active:scale-95",
+            questionnaires && questionnaires.unfilled.length > 0 && "ring-2 ring-[#9D5BD2] ring-offset-2"
+          )}
+          aria-label="שאלונים"
+        >
+          <ClipboardList className="h-5 w-5 text-[#9D5BD2]" />
         </button>
       </div>
 
@@ -129,6 +148,18 @@ export function PlaybookMobileSheet({
                   <BookOpen className="h-4 w-4" />
                   הדרכה
                 </button>
+                <button
+                  onClick={() => setActiveTab('questionnaires')}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2",
+                    activeTab === 'questionnaires'
+                      ? "bg-white shadow-sm text-[#00A0B0] border border-[#E6E9EF]"
+                      : "text-[#676879] hover:bg-[#E6E9EF]/50"
+                  )}
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  שאלונים
+                </button>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
@@ -139,7 +170,7 @@ export function PlaybookMobileSheet({
             </div>
             {/* Hidden title for accessibility */}
             <SheetTitle className="sr-only">
-              {activeTab === 'notes' ? 'הערות' : 'הדרכה'}
+              {activeTab === 'notes' ? 'הערות' : activeTab === 'playbook' ? 'הדרכה' : 'שאלונים'}
             </SheetTitle>
           </SheetHeader>
 
@@ -173,8 +204,17 @@ export function PlaybookMobileSheet({
                   )}
                 </div>
               </div>
-            ) : (
+            ) : activeTab === 'notes' ? (
               <NotesSection leadId={leadId} initialNotes={initialNotes} isEmbedded />
+            ) : (
+              <div className="p-4">
+                <LeadQuestionnairePanel
+                  leadId={leadId}
+                  filled={questionnaires?.filled ?? []}
+                  unfilled={questionnaires?.unfilled ?? []}
+                  questionnairesWithFields={questionnaires?.withFields ?? new Map()}
+                />
+              </div>
             )}
           </div>
         </SheetContent>

@@ -67,9 +67,8 @@ const getLeadKPIsInternal = cache(async (dateFilter?: DateFilter): Promise<LeadK
   const pipelineCounts: Record<PipelineStage, number> = {
     follow_up: 0,
     warm: 0,
-    hot: 0,
     signed: 0,
-    lost: 0,
+    exit: 0,
     future: 0,
   }
 
@@ -118,6 +117,9 @@ const getLeadKPIsInternal = cache(async (dateFilter?: DateFilter): Promise<LeadK
   // Calculate signed rate (customer + signed statuses)
   const signedCount = pipelineCounts.signed
 
+  // Count paying customers separately
+  const payingCustomerCount = statusCountMap.paying_customer || 0
+
   return {
     totalLeads: total,
     // Original status counts (for backward compatibility)
@@ -128,10 +130,10 @@ const getLeadKPIsInternal = cache(async (dateFilter?: DateFilter): Promise<LeadK
     // Pipeline stage counts
     followUpLeads: pipelineCounts.follow_up,
     warmLeads: pipelineCounts.warm,
-    hotLeads: pipelineCounts.hot,
     signedLeads: pipelineCounts.signed,
     futureLeads: pipelineCounts.future,
-    allLostLeads: pipelineCounts.lost,
+    exitLeads: pipelineCounts.exit,
+    payingCustomers: payingCustomerCount,
     // Rates
     conversionRate: total > 0 ? (signedCount / total) * 100 : 0,
     totalPipelineValue: totalPipeline,
@@ -173,9 +175,8 @@ const getConversionFunnelInternal = cache(async (dateFilter?: DateFilter): Promi
   const stageLabels: Record<PipelineStage, string> = {
     follow_up: 'מעקב',
     warm: 'חמים',
-    hot: 'חמים מאוד',
     signed: 'סגירה',
-    lost: 'אבודים',
+    exit: 'יציאה ממשפך',
     future: 'עתידי',
   }
 
@@ -232,7 +233,7 @@ const getSubStatusBreakdownInternal = cache(async (dateFilter?: DateFilter): Pro
 
   // Return breakdown for statuses that typically need sub-breakdown
   // Focus on follow_up and warm stages where "אין מענה" type statuses live
-  const relevantStages: PipelineStage[] = ['follow_up', 'warm', 'hot']
+  const relevantStages: PipelineStage[] = ['follow_up', 'warm']
 
   const results: SubStatusItem[] = []
 
@@ -364,7 +365,6 @@ const getTimeSeriesTrendsInternal = cache(async (days: number = 30): Promise<Tim
       // Canonical 14 statuses
       not_contacted: counts.not_contacted ?? 0,
       no_answer: counts.no_answer ?? 0,
-      contacted: counts.contacted ?? 0,
       message_sent: counts.message_sent ?? 0,
       meeting_set: counts.meeting_set ?? 0,
       pending_agreement: counts.pending_agreement ?? 0,
@@ -372,7 +372,8 @@ const getTimeSeriesTrendsInternal = cache(async (days: number = 30): Promise<Tim
       under_review: counts.under_review ?? 0,
       report_submitted: counts.report_submitted ?? 0,
       missing_document: counts.missing_document ?? 0,
-      completed: counts.completed ?? 0,
+      waiting_for_payment: counts.waiting_for_payment ?? 0,
+      payment_completed: counts.payment_completed ?? 0,
       not_relevant: counts.not_relevant ?? 0,
       closed_elsewhere: counts.closed_elsewhere ?? 0,
       future_interest: counts.future_interest ?? 0,
@@ -700,9 +701,8 @@ const getStatusBreakdownInternal = cache(async (dateFilter?: DateFilter): Promis
   const stageLabels: Record<PipelineStage, string> = {
     follow_up: 'מעקב',
     warm: 'חמים',
-    hot: 'חמים מאוד',
     signed: 'סגירה',
-    lost: 'אבודים',
+    exit: 'יציאה ממשפך',
     future: 'עתידי',
   }
 

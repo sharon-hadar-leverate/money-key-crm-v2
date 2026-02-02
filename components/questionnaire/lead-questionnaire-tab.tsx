@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { cn } from '@/lib/utils'
 import { ClipboardList, Check, Clock, ChevronDown, ChevronUp, Eye } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { calculateProgress } from '@/lib/questionnaire-utils'

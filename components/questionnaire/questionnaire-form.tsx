@@ -69,8 +69,9 @@ export function QuestionnaireForm({
     // Clear error for this field
     if (errors[fieldSlug]) {
       setErrors(prev => {
-        const { [fieldSlug]: _removed, ...rest } = prev
-        return rest
+        const newErrors = { ...prev }
+        delete newErrors[fieldSlug]
+        return newErrors
       })
     }
   }, [errors])

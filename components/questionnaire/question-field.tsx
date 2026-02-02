@@ -325,7 +325,7 @@ function ScaleField({ field, value, onChange, disabled }: Omit<QuestionFieldProp
 }
 
 // Date Field
-function DateField({ field, value, onChange, disabled }: Omit<QuestionFieldProps, 'error'>) {
+function DateField({ value, onChange, disabled }: Omit<QuestionFieldProps, 'error'>) {
   return (
     <input
       type="date"

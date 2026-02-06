@@ -17,7 +17,7 @@ export const LEAD_STATUSES = [
   // Warm stage (includes meeting_set and pending_agreement)
   'message_sent',     // נשלחה הודעה
   'meeting_set',      // נקבעה שיחה
-  'pending_agreement', // בהמתנה להסכם
+  'pending_agreement', // נשלח הסכם התקשרות
   // Signed stage (active customers)
   'signed',           // חתם על הסכם התקשרות
   'under_review',     // בבדיקה
@@ -28,6 +28,7 @@ export const LEAD_STATUSES = [
   // Exit stage (יציאה ממשפך)
   'not_relevant',     // לא רלוונטי
   'closed_elsewhere', // סגר במקום אחר
+  'no_refund',        // לקוחות ללא החזר
   // Future stage
   'future_interest',  // מעוניין בעתיד
 ] as const
@@ -38,7 +39,7 @@ export const PIPELINE_STAGES = {
   follow_up: ['not_contacted', 'no_answer'],
   warm: ['message_sent', 'meeting_set', 'pending_agreement'],
   signed: ['signed', 'under_review', 'report_submitted', 'missing_document', 'waiting_for_payment', 'payment_completed'],
-  exit: ['not_relevant', 'closed_elsewhere'],
+  exit: ['not_relevant', 'closed_elsewhere', 'no_refund'],
   future: ['future_interest'],
 } as const
 export type PipelineStage = keyof typeof PIPELINE_STAGES
@@ -101,7 +102,7 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     pipelineStage: 'warm'
   },
   pending_agreement: {
-    label: 'בהמתנה להסכם',
+    label: 'נשלח הסכם התקשרות',
     color: 'text-[#D17A00]',
     bgColor: 'bg-[#FFF0D6]',
     borderColor: 'border-transparent',
@@ -172,6 +173,14 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     bgColor: 'bg-[#FFD6D9]',
     borderColor: 'border-transparent',
     cssClass: 'status-closed-elsewhere',
+    pipelineStage: 'exit'
+  },
+  no_refund: {
+    label: 'לקוחות ללא החזר',
+    color: 'text-[#D83A52]',
+    bgColor: 'bg-[#FFD6D9]',
+    borderColor: 'border-transparent',
+    cssClass: 'status-no-refund',
     pipelineStage: 'exit'
   },
   // === Future status ===
@@ -292,6 +301,10 @@ export interface LeadKPIs {
   conversionRate: number
   totalPipelineValue: number
   weightedPipelineValue: number
+  // Income KPIs (dashboard)
+  expectedIncome: number       // SUM(refund_amount × commission_rate/100) for signed-stage leads
+  amountCollected: number      // SUM(refund_amount × commission_rate/100) for payment_completed leads
+  totalRefunds: number         // SUM(refund_amount) for all leads with refund_amount
 }
 
 export interface UTMPerformance {
@@ -318,6 +331,7 @@ export interface TimeSeriesData {
   payment_completed: number
   not_relevant: number
   closed_elsewhere: number
+  no_refund: number
   future_interest: number
 }
 

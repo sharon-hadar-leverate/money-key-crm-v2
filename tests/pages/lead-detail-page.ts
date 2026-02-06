@@ -109,7 +109,7 @@ export class LeadDetailPage extends BasePage {
       no_answer: 'אין מענה',
       message_sent: 'נשלחה הודעה',
       meeting_set: 'נקבעה שיחה',
-      pending_agreement: 'בהמתנה להסכם',
+      pending_agreement: 'נשלח הסכם התקשרות',
       signed: 'חתם על הסכם התקשרות',
       under_review: 'בבדיקה',
       report_submitted: 'הוגש דוח',
@@ -130,7 +130,7 @@ export class LeadDetailPage extends BasePage {
    */
   async getCurrentStatus(): Promise<string> {
     // The status is shown by which button is disabled in the status section
-    const disabledButton = this.page.locator('main').getByRole('button').filter({ hasText: /^(חדש|טרם יצרנו קשר|אין מענה|נוצר קשר|נשלחה הודעה|נקבעה שיחה|בהמתנה להסכם|לקוח|חתם על הסכם|אבוד|לא רלוונטי|סגר במקום אחר|מעוניין בעתיד)$/ }).locator('[disabled]').or(
+    const disabledButton = this.page.locator('main').getByRole('button').filter({ hasText: /^(חדש|טרם יצרנו קשר|אין מענה|נוצר קשר|נשלחה הודעה|נקבעה שיחה|נשלח הסכם התקשרות|לקוח|חתם על הסכם|אבוד|לא רלוונטי|סגר במקום אחר|מעוניין בעתיד)$/ }).locator('[disabled]').or(
       this.page.getByRole('button', { disabled: true })
     ).first()
 

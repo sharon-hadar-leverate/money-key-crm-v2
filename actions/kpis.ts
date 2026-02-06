@@ -114,6 +114,42 @@ const getLeadKPIsInternal = cache(async (dateFilter?: DateFilter): Promise<LeadK
     weightedPipeline += revenue * probability
   })
 
+  // Get income KPIs
+  let incomeQuery = supabase
+    .from(Tables.leads)
+    .select('refund_amount, commission_rate, status')
+    .is('deleted_at', null)
+    .not('refund_amount', 'is', null)
+
+  if (dateFilter?.from) {
+    incomeQuery = incomeQuery.gte('created_at', dateFilter.from)
+  }
+  if (dateFilter?.to) {
+    incomeQuery = incomeQuery.lte('created_at', dateFilter.to)
+  }
+
+  const { data: incomeData } = await incomeQuery
+
+  let expectedIncome = 0
+  let amountCollected = 0
+  let totalRefunds = 0
+  const signedStatuses = [...PIPELINE_STAGES.signed] as string[]
+
+  incomeData?.forEach((lead) => {
+    const refund = lead.refund_amount ?? 0
+    const rate = (lead.commission_rate ?? 0) / 100
+    const commission = refund * rate
+
+    totalRefunds += refund
+
+    if (signedStatuses.includes(lead.status as string)) {
+      expectedIncome += commission
+    }
+    if (lead.status === 'payment_completed') {
+      amountCollected += commission
+    }
+  })
+
   // Calculate signed rate (customer + signed statuses)
   const signedCount = pipelineCounts.signed
 
@@ -138,6 +174,9 @@ const getLeadKPIsInternal = cache(async (dateFilter?: DateFilter): Promise<LeadK
     conversionRate: total > 0 ? (signedCount / total) * 100 : 0,
     totalPipelineValue: totalPipeline,
     weightedPipelineValue: weightedPipeline,
+    expectedIncome,
+    amountCollected,
+    totalRefunds,
   }
 })
 
@@ -376,6 +415,7 @@ const getTimeSeriesTrendsInternal = cache(async (days: number = 30): Promise<Tim
       payment_completed: counts.payment_completed ?? 0,
       not_relevant: counts.not_relevant ?? 0,
       closed_elsewhere: counts.closed_elsewhere ?? 0,
+      no_refund: counts.no_refund ?? 0,
       future_interest: counts.future_interest ?? 0,
     })
     currentDate.setDate(currentDate.getDate() + 1)

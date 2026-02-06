@@ -118,6 +118,7 @@ export async function createNote(
         lead_id: leadId,
         note_preview: trimmedContent.substring(0, 100),
       },
+      actor_user_id: userId ?? undefined,
     })
 
     revalidatePath(`/leads/${leadId}`)

@@ -60,7 +60,7 @@ VALID_STATUSES = {
     'signed', 'under_review', 'report_submitted', 'missing_document',
     'waiting_for_payment', 'payment_completed',
     # Exit (יציאה ממשפך)
-    'not_relevant', 'closed_elsewhere',
+    'not_relevant', 'closed_elsewhere', 'no_refund',
     # Future
     'future_interest',
 }

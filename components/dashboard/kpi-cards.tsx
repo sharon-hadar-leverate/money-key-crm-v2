@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { Users, TrendingUp, Wallet, Target } from 'lucide-react'
+import { Users, TrendingUp, Wallet, Target, CircleDollarSign, Receipt } from 'lucide-react'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import type { LeadKPIs } from '@/types/leads'
 import goodMoneyIcon from '@/app/assets/good_money_no_bg.png'
@@ -60,14 +60,40 @@ export function KPICards({ kpis }: KPICardsProps) {
 
         <div className="h-10 w-px bg-[#E6E9EF]" />
 
-        {/* Expected Revenue */}
+        {/* Expected Income */}
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#EDD9FB] to-[#DCC4F0] flex items-center justify-center">
             <Wallet className="h-6 w-6 text-[#9D5BD2]" strokeWidth={2} />
           </div>
           <div>
             <p className="text-xs text-[#9B9BAD] font-medium">הכנסה צפויה</p>
-            <p className="text-2xl font-bold text-[#9D5BD2] number-display">{formatCurrency(kpis.weightedPipelineValue)}</p>
+            <p className="text-2xl font-bold text-[#9D5BD2] number-display">{formatCurrency(kpis.expectedIncome)}</p>
+          </div>
+        </div>
+
+        <div className="h-10 w-px bg-[#E6E9EF]" />
+
+        {/* Amount Collected */}
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4F4DD] to-[#B8E8C4] flex items-center justify-center">
+            <CircleDollarSign className="h-6 w-6 text-[#00854D]" strokeWidth={2} />
+          </div>
+          <div>
+            <p className="text-xs text-[#9B9BAD] font-medium">סכום נגבה</p>
+            <p className="text-2xl font-bold text-[#00854D] number-display">{formatCurrency(kpis.amountCollected)}</p>
+          </div>
+        </div>
+
+        <div className="h-10 w-px bg-[#E6E9EF]" />
+
+        {/* Total Refunds */}
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#CCE5FF] to-[#B3D6FF] flex items-center justify-center">
+            <Receipt className="h-6 w-6 text-[#0073EA]" strokeWidth={2} />
+          </div>
+          <div>
+            <p className="text-xs text-[#9B9BAD] font-medium">סך הכל החזרים</p>
+            <p className="text-2xl font-bold text-[#0073EA] number-display">{formatCurrency(kpis.totalRefunds)}</p>
           </div>
         </div>
       </div>

@@ -88,6 +88,7 @@ STATUS_MAP = {
     # Payment workflow statuses
     "ממתין להגבייה": "waiting_for_payment",
     "גבייה הושלמה": "payment_completed",
+    "לקוחות ללא החזר": "no_refund",
     # Mapped statuses (these Zoho statuses map to different CRM statuses)
     "חדש": "not_contacted",        # חדש → טרם יצרנו קשר
     "לקוח": "signed",              # לקוח → חתם על הסכם התקשרות

@@ -9,8 +9,7 @@ import type { LeadStatus } from '@/types/leads'
  */
 export const HIDDEN_STATUSES: LeadStatus[] = [
   'not_contacted',    // טרם יצרנו קשר - initial state, don't offer as action
-  'pending_agreement', // בהמתנה להסכם - intermediate
-  'future_interest',  // מעוניין בעתיד - rarely selected manually
+  'pending_agreement', // נשלח הסכם התקשרות - intermediate
 ]
 
 /**
@@ -39,16 +38,17 @@ export const STATUS_FLOW: Record<LeadStatus, LeadStatus[]> = {
   'pending_agreement': ['signed', 'not_relevant', 'closed_elsewhere'],
 
   // === SIGNED (active customers) ===
-  'signed': ['under_review', 'report_submitted', 'missing_document', 'waiting_for_payment'],
-  'under_review': ['report_submitted', 'missing_document', 'waiting_for_payment'],
-  'report_submitted': ['waiting_for_payment', 'missing_document'],
-  'missing_document': ['under_review', 'report_submitted', 'waiting_for_payment'],
-  'waiting_for_payment': ['payment_completed', 'not_relevant'],
+  'signed': ['under_review', 'report_submitted', 'missing_document', 'waiting_for_payment', 'no_refund'],
+  'under_review': ['report_submitted', 'missing_document', 'waiting_for_payment', 'no_refund'],
+  'report_submitted': ['waiting_for_payment', 'missing_document', 'no_refund'],
+  'missing_document': ['under_review', 'report_submitted', 'waiting_for_payment', 'no_refund'],
+  'waiting_for_payment': ['payment_completed', 'not_relevant', 'no_refund'],
   'payment_completed': [], // Terminal state - collection complete
 
   // === EXIT (יציאה ממשפך) ===
   'not_relevant': ['not_contacted', 'future_interest'],
   'closed_elsewhere': ['not_contacted', 'future_interest'],
+  'no_refund': ['not_contacted', 'future_interest'],
 
   // === FUTURE ===
   'future_interest': ['message_sent', 'not_contacted'],

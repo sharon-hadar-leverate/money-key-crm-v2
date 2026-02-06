@@ -1,12 +1,14 @@
 import { Header } from '@/components/layout/header'
-import { getAllNotifications, getUnreadCount } from '@/actions/notifications'
+import { getAllNotifications, getUnreadCount, getDistinctActors, getDistinctNotificationLeads } from '@/actions/notifications'
 import { NotificationsPageClient } from './notifications-page-client'
 
 export default async function NotificationsPage() {
   // Parallel fetching (async-parallel rule)
-  const [notificationsResult, unreadCount] = await Promise.all([
+  const [notificationsResult, unreadCount, actors, leads] = await Promise.all([
     getAllNotifications({ limit: 50 }),
     getUnreadCount(),
+    getDistinctActors(),
+    getDistinctNotificationLeads(),
   ])
 
   return (
@@ -20,6 +22,8 @@ export default async function NotificationsPage() {
           initialNotifications={notificationsResult.notifications}
           initialUnreadCount={unreadCount}
           initialTotal={notificationsResult.total}
+          actors={actors}
+          leads={leads}
         />
       </div>
     </>

@@ -24,6 +24,9 @@ import type {
 
 // Helper to get current user ID
 async function getCurrentUserId(): Promise<string | null> {
+  if (process.env.BYPASS_AUTH === 'true') {
+    return '00000000-0000-0000-0000-000000000000'
+  }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   return user?.id ?? null
@@ -533,6 +536,8 @@ export async function updateResponse(
 
     // If questionnaire was completed, send notification
     if (input.status === 'completed') {
+      const actorUserId = await getCurrentUserId()
+
       // Get questionnaire name
       const { data: questionnaire } = await supabase
         .from(Tables.questionnaires)
@@ -548,6 +553,7 @@ export async function updateResponse(
         metadata: {
           questionnaire_name: questionnaire?.name,
         },
+        actor_user_id: actorUserId ?? undefined,
       })
     }
 

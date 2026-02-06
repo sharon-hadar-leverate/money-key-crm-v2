@@ -70,6 +70,7 @@ export async function createTask(
           task_title: input.title,
           due_date: input.due_date,
         },
+        actor_user_id: userId ?? undefined,
       })
     }
 
@@ -280,6 +281,7 @@ export async function updateTask(
           task_title: data.title,
           due_date: data.due_date ?? undefined,
         },
+        actor_user_id: userId ?? undefined,
       })
     }
 

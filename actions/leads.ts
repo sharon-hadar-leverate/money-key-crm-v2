@@ -13,6 +13,16 @@ import type {
   LeadFilterOptions,
 } from '@/types/leads'
 
+// Helper to get current user ID for actor tracking
+async function getCurrentUserId(): Promise<string | null> {
+  if (process.env.BYPASS_AUTH === 'true') {
+    return '00000000-0000-0000-0000-000000000000'
+  }
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  return user?.id ?? null
+}
+
 // Helper to get current user email for audit trail
 async function getCurrentUserEmail(): Promise<string | null> {
   const supabase = await createClient()
@@ -28,7 +38,10 @@ export async function createLead(input: CreateLeadInput): Promise<{
 }> {
   try {
     const supabase = await createClient()
-    const userEmail = await getCurrentUserEmail()
+    const [userEmail, actorUserId] = await Promise.all([
+      getCurrentUserEmail(),
+      getCurrentUserId(),
+    ])
 
     const { data, error } = await supabase
       .from(Tables.leads)
@@ -84,6 +97,7 @@ export async function createLead(input: CreateLeadInput): Promise<{
         lead_id: data.id,
         source: input.source,
       },
+      actor_user_id: actorUserId ?? undefined,
     })
 
     revalidatePath('/leads')
@@ -301,7 +315,10 @@ export async function updateLeadStatus(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const userEmail = await getCurrentUserEmail()
+    const [userEmail, actorUserId] = await Promise.all([
+      getCurrentUserEmail(),
+      getCurrentUserId(),
+    ])
 
     // Get current status
     const { data: lead } = await supabase
@@ -357,6 +374,7 @@ export async function updateLeadStatus(
         old_status: oldStatus ?? undefined,
         new_status: newStatus,
       },
+      actor_user_id: actorUserId ?? undefined,
     })
 
     revalidatePath('/leads')

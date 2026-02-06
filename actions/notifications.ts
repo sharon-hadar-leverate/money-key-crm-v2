@@ -5,11 +5,14 @@ import { createClient } from '@/lib/supabase/server'
 import { Tables } from '@/lib/tables'
 import type {
   Notification,
+  NotificationWithActor,
   CreateNotificationInput,
   ActionResult,
   NotificationMetadata,
+  NotificationFilterOptions,
 } from '@/types/notifications'
 import type { Json } from '@/types/database'
+import { getUserProfiles } from './user-profile'
 
 // Helper to get current user ID
 async function getCurrentUserId(): Promise<string | null> {
@@ -52,7 +55,7 @@ export async function getUnreadCount(): Promise<number> {
 
 export async function getRecentNotifications(
   limit: number = 10
-): Promise<Notification[]> {
+): Promise<NotificationWithActor[]> {
   try {
     const userId = await getCurrentUserId()
     if (!userId) return []
@@ -71,19 +74,16 @@ export async function getRecentNotifications(
       return []
     }
 
-    return (data ?? []).map(mapNotification)
+    const notifications = (data ?? []).map(mapNotification)
+    return resolveActorProfiles(notifications)
   } catch {
     return []
   }
 }
 
 export async function getAllNotifications(
-  options?: {
-    limit?: number
-    offset?: number
-    unreadOnly?: boolean
-  }
-): Promise<{ notifications: Notification[]; total: number }> {
+  options?: NotificationFilterOptions
+): Promise<{ notifications: NotificationWithActor[]; total: number }> {
   const userId = await getCurrentUserId()
   if (!userId) return { notifications: [], total: 0 }
 
@@ -99,6 +99,26 @@ export async function getAllNotifications(
     query = query.eq('is_read', false)
   }
 
+  if (options?.actorUserId) {
+    query = query.eq('actor_user_id', options.actorUserId)
+  }
+
+  if (options?.type) {
+    query = query.eq('type', options.type)
+  }
+
+  if (options?.dateFrom) {
+    query = query.gte('created_at', options.dateFrom)
+  }
+
+  if (options?.dateTo) {
+    query = query.lte('created_at', options.dateTo)
+  }
+
+  if (options?.leadId) {
+    query = query.eq('entity_id', options.leadId).eq('entity_type', 'lead')
+  }
+
   const limit = options?.limit ?? 20
   const offset = options?.offset ?? 0
   query = query.range(offset, offset + limit - 1)
@@ -110,8 +130,9 @@ export async function getAllNotifications(
     return { notifications: [], total: 0 }
   }
 
+  const notifications = (data ?? []).map(mapNotification)
   return {
-    notifications: (data ?? []).map(mapNotification),
+    notifications: await resolveActorProfiles(notifications),
     total: count ?? 0,
   }
 }
@@ -187,6 +208,81 @@ export async function markAllAsRead(): Promise<ActionResult> {
 }
 
 // ============================================
+// FILTER DATA
+// ============================================
+
+export async function getDistinctActors(): Promise<
+  { user_id: string; display_name: string }[]
+> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return []
+
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from(Tables.notifications)
+      .select('actor_user_id')
+      .eq('user_id', userId)
+      .not('actor_user_id', 'is', null)
+
+    if (error || !data) return []
+
+    const uniqueIds = Array.from(new Set(data.map(r => r.actor_user_id as string)))
+    if (uniqueIds.length === 0) return []
+
+    const profilesMap = await getUserProfiles(uniqueIds)
+
+    return uniqueIds
+      .map(id => {
+        const profile = profilesMap.get(id)
+        return {
+          user_id: id,
+          display_name: profile?.display_name ?? 'Unknown',
+        }
+      })
+      .sort((a, b) => a.display_name.localeCompare(b.display_name))
+  } catch {
+    return []
+  }
+}
+
+export async function getDistinctNotificationLeads(): Promise<
+  { lead_id: string; lead_name: string }[]
+> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!userId) return []
+
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from(Tables.notifications)
+      .select('entity_id, metadata')
+      .eq('user_id', userId)
+      .eq('entity_type', 'lead')
+      .not('entity_id', 'is', null)
+
+    if (error || !data) return []
+
+    const leadsMap = new Map<string, string>()
+    for (const row of data) {
+      const leadId = row.entity_id as string
+      if (!leadsMap.has(leadId)) {
+        const meta = (row.metadata as NotificationMetadata) ?? {}
+        leadsMap.set(leadId, meta.lead_name ?? leadId)
+      }
+    }
+
+    return Array.from(leadsMap.entries())
+      .map(([lead_id, lead_name]) => ({ lead_id, lead_name }))
+      .sort((a, b) => a.lead_name.localeCompare(b.lead_name))
+  } catch {
+    return []
+  }
+}
+
+// ============================================
 // CREATE NOTIFICATION
 // ============================================
 
@@ -206,6 +302,7 @@ export async function createNotification(
         entity_type: input.entity_type,
         entity_id: input.entity_id,
         metadata: (input.metadata ?? {}) as unknown as Json,
+        actor_user_id: input.actor_user_id,
       })
       .select()
       .single()
@@ -262,6 +359,7 @@ export async function createNotificationForAllUsers(
       entity_type: input.entity_type,
       entity_id: input.entity_id,
       metadata: (input.metadata ?? {}) as unknown as Json,
+      actor_user_id: input.actor_user_id,
     }))
 
     const { error } = await supabase
@@ -304,5 +402,25 @@ function mapNotification(row: Record<string, unknown>): Notification {
     read_at: row.read_at as string | null,
     created_at: row.created_at as string | null,
     metadata: (row.metadata as NotificationMetadata) ?? {},
+    actor_user_id: (row.actor_user_id as string | null) ?? null,
   }
+}
+
+async function resolveActorProfiles(
+  notifications: Notification[]
+): Promise<NotificationWithActor[]> {
+  const actorIds = Array.from(
+    new Set(notifications.map(n => n.actor_user_id).filter((id): id is string => id !== null))
+  )
+
+  const profilesMap = await getUserProfiles(actorIds)
+
+  return notifications.map(n => {
+    const profile = n.actor_user_id ? profilesMap.get(n.actor_user_id) : null
+    return {
+      ...n,
+      actor_display_name: profile?.display_name ?? null,
+      actor_email: profile?.email ?? null,
+    }
+  })
 }

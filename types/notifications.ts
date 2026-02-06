@@ -22,6 +22,12 @@ export interface Notification {
   read_at: string | null
   created_at: string | null
   metadata: NotificationMetadata
+  actor_user_id: string | null
+}
+
+export interface NotificationWithActor extends Notification {
+  actor_display_name: string | null
+  actor_email: string | null
 }
 
 export interface NotificationMetadata {
@@ -44,6 +50,18 @@ export interface CreateNotificationInput {
   entity_type?: EntityType
   entity_id?: string
   metadata?: NotificationMetadata
+  actor_user_id?: string
+}
+
+export interface NotificationFilterOptions {
+  limit?: number
+  offset?: number
+  unreadOnly?: boolean
+  actorUserId?: string
+  type?: NotificationType
+  dateFrom?: string
+  dateTo?: string
+  leadId?: string
 }
 
 export interface ActionResult<T = void> {

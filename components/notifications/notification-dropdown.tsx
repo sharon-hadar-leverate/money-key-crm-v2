@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { Bell, CheckCheck, Loader2 } from 'lucide-react'
 import { NotificationItem } from './notification-item'
 import { markAsRead, markAllAsRead } from '@/actions/notifications'
-import type { Notification } from '@/types/notifications'
+import type { NotificationWithActor } from '@/types/notifications'
 
 interface NotificationDropdownProps {
-  notifications: Notification[]
+  notifications: NotificationWithActor[]
   onRefresh?: () => void
 }
 
@@ -74,6 +74,7 @@ export function NotificationDropdown({
                 key={notification.id}
                 notification={notification}
                 onMarkAsRead={handleMarkAsRead}
+                compact
               />
             ))}
           </div>

@@ -312,6 +312,7 @@ export type Database = {
           read_at: string | null
           created_at: string | null
           metadata: Json
+          actor_user_id: string | null
         }
         Insert: {
           id?: string
@@ -325,6 +326,7 @@ export type Database = {
           read_at?: string | null
           created_at?: string | null
           metadata?: Json
+          actor_user_id?: string | null
         }
         Update: {
           id?: string
@@ -338,6 +340,7 @@ export type Database = {
           read_at?: string | null
           created_at?: string | null
           metadata?: Json
+          actor_user_id?: string | null
         }
         Relationships: []
       }

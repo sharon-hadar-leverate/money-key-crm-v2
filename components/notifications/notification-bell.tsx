@@ -5,12 +5,12 @@ import { Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NotificationDropdown } from './notification-dropdown'
 import { getUnreadCount, getRecentNotifications } from '@/actions/notifications'
-import type { Notification } from '@/types/notifications'
+import type { NotificationWithActor } from '@/types/notifications'
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifications, setNotifications] = useState<NotificationWithActor[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const loadData = useCallback(async () => {

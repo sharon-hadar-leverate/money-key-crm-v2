@@ -618,7 +618,7 @@ const getSourcePerformanceInternal = cache(async (dateFilter?: DateFilter): Prom
 
   let query = supabase
     .from(Tables.leads)
-    .select('utm_source, source, status, expected_revenue')
+    .select('utm_source, source, status, refund_amount, commission_rate')
     .is('deleted_at', null)
 
   if (dateFilter?.from) query = query.gte('created_at', dateFilter.from)
@@ -635,7 +635,9 @@ const getSourcePerformanceInternal = cache(async (dateFilter?: DateFilter): Prom
     existing.leads++
     if (signedStatuses.includes(lead.status as string)) {
       existing.converted++
-      existing.revenue += lead.expected_revenue ?? 0
+      const refund = lead.refund_amount ?? 0
+      const rate = (lead.commission_rate ?? 0) / 100
+      existing.revenue += refund * rate
     }
     sourceMap.set(src, existing)
   })
@@ -673,7 +675,7 @@ const getCampaignPerformanceInternal = cache(async (dateFilter?: DateFilter): Pr
 
   let query = supabase
     .from(Tables.leads)
-    .select('utm_campaign, status, expected_revenue')
+    .select('utm_campaign, status, refund_amount, commission_rate')
     .is('deleted_at', null)
     .not('utm_campaign', 'is', null)
 
@@ -691,7 +693,9 @@ const getCampaignPerformanceInternal = cache(async (dateFilter?: DateFilter): Pr
     existing.leads++
     if (signedStatuses.includes(lead.status as string)) {
       existing.converted++
-      existing.revenue += lead.expected_revenue ?? 0
+      const refund = lead.refund_amount ?? 0
+      const rate = (lead.commission_rate ?? 0) / 100
+      existing.revenue += refund * rate
     }
     campaignMap.set(campaign, existing)
   })

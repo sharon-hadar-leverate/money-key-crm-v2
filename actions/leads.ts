@@ -54,6 +54,8 @@ export async function createLead(input: CreateLeadInput): Promise<{
         source: input.source,
         expected_revenue: input.expected_revenue,
         probability: input.probability,
+        refund_amount: input.refund_amount,
+        commission_rate: input.commission_rate,
         custom_fields: input.custom_fields ?? {},
         utm_source: input.utm_source,
         utm_medium: input.utm_medium,
@@ -65,7 +67,7 @@ export async function createLead(input: CreateLeadInput): Promise<{
         referrer: input.referrer,
         ip_address: input.ip_address,
         user_agent: input.user_agent,
-        status: 'new',
+        status: input.status ?? 'not_contacted',
         is_new: true,
       })
       .select()
@@ -474,8 +476,6 @@ export async function markLeadAsSeen(id: string): Promise<void> {
       last_seen: new Date().toISOString(),
     })
     .eq('id', id)
-
-  revalidatePath('/leads')
 }
 
 // ============ FOLLOW-UP DATE ============

@@ -50,3 +50,6 @@ playwright-report/
 package-lock.json
 # Sentry Config File
 .env.sentry-build-plugin
+
+# data migration investigation raw data
+docs/data_migration_investigations/*.json

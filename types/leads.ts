@@ -232,6 +232,7 @@ export interface CreateLeadInput {
   first_name?: string
   last_name?: string
   source?: string
+  status?: LeadStatus
   expected_revenue?: number
   probability?: number
   refund_amount?: number

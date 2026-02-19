@@ -22,7 +22,7 @@ export function KPICards({ kpis }: KPICardsProps) {
             <Users className="h-6 w-6 text-[#0073EA]" strokeWidth={2} />
           </div>
           <div>
-            <p className="text-xs text-[#9B9BAD] font-medium">סה״כ לידים</p>
+            <p className="text-xs text-[#9B9BAD] font-medium" title="לפי תאריך יצירה">סה״כ לידים</p>
             <p className="text-2xl font-bold text-[#1a1d23] number-display">{formatNumber(kpis.totalLeads)}</p>
           </div>
         </div>
@@ -66,7 +66,7 @@ export function KPICards({ kpis }: KPICardsProps) {
             <Wallet className="h-6 w-6 text-[#9D5BD2]" strokeWidth={2} />
           </div>
           <div>
-            <p className="text-xs text-[#9B9BAD] font-medium">הכנסה צפויה</p>
+            <p className="text-xs text-[#9B9BAD] font-medium" title="לפי תאריך שינוי סטטוס">הכנסה צפויה</p>
             <p className="text-2xl font-bold text-[#9D5BD2] number-display">{formatCurrency(kpis.expectedIncome)}</p>
           </div>
         </div>
@@ -79,7 +79,7 @@ export function KPICards({ kpis }: KPICardsProps) {
             <CircleDollarSign className="h-6 w-6 text-[#00854D]" strokeWidth={2} />
           </div>
           <div>
-            <p className="text-xs text-[#9B9BAD] font-medium">סכום נגבה</p>
+            <p className="text-xs text-[#9B9BAD] font-medium" title="לפי תאריך שינוי סטטוס">סכום נגבה</p>
             <p className="text-2xl font-bold text-[#00854D] number-display">{formatCurrency(kpis.amountCollected)}</p>
           </div>
         </div>
@@ -92,7 +92,7 @@ export function KPICards({ kpis }: KPICardsProps) {
             <Receipt className="h-6 w-6 text-[#0073EA]" strokeWidth={2} />
           </div>
           <div>
-            <p className="text-xs text-[#9B9BAD] font-medium">סך הכל החזרים</p>
+            <p className="text-xs text-[#9B9BAD] font-medium" title="לפי תאריך יצירה">סך הכל החזרים</p>
             <p className="text-2xl font-bold text-[#0073EA] number-display">{formatCurrency(kpis.totalRefunds)}</p>
           </div>
         </div>

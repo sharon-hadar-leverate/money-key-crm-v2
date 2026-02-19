@@ -13,6 +13,7 @@ interface UpcomingFollowupsProps {
 }
 
 function getFollowUpLabel(date: Date): { text: string; className: string } {
+  const time = format(date, 'HH:mm')
   if (isPast(date) && !isToday(date)) {
     const daysOverdue = differenceInDays(new Date(), date)
     return {
@@ -21,17 +22,17 @@ function getFollowUpLabel(date: Date): { text: string; className: string } {
     }
   }
   if (isToday(date)) {
-    return { text: 'היום', className: 'bg-[#FFF0D6] text-[#D17A00]' }
+    return { text: `${time} היום`, className: 'bg-[#FFF0D6] text-[#D17A00]' }
   }
   if (isTomorrow(date)) {
-    return { text: 'מחר', className: 'bg-[#E5F6F7] text-[#00A0B0]' }
+    return { text: `${time} מחר`, className: 'bg-[#E5F6F7] text-[#00A0B0]' }
   }
   const days = differenceInDays(date, new Date())
   if (days <= 7) {
-    return { text: `בעוד ${days} ימים`, className: 'bg-[#F5F6F8] text-[#676879]' }
+    return { text: `${time} בעוד ${days} ימים`, className: 'bg-[#F5F6F8] text-[#676879]' }
   }
   return {
-    text: format(date, 'dd/MM', { locale: he }),
+    text: format(date, 'HH:mm dd/MM', { locale: he }),
     className: 'bg-[#F5F6F8] text-[#676879]',
   }
 }
@@ -103,8 +104,10 @@ export function UpcomingFollowups({ leads }: UpcomingFollowupsProps) {
               key={lead.id}
               href={`/leads/${lead.id}`}
               className={cn(
-                "flex items-center gap-4 px-5 py-3 hover:bg-[#F5F6F8] transition-colors group",
-                isOverdue && "bg-[#FFD6D9]/10"
+                "flex items-center gap-4 px-5 py-3 transition-colors group",
+                isOverdue
+                  ? "bg-[#FFE5E5] hover:bg-[#FFD6D6]"
+                  : "hover:bg-[#F5F6F8]"
               )}
             >
               {/* Avatar / Icon */}

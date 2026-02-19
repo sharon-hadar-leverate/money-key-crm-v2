@@ -1,13 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { ClipboardList, Check, Clock, ChevronDown, ChevronUp, Eye } from 'lucide-react'
+import { ClipboardList, Check, Clock, ChevronDown, ChevronUp, ChevronRight, Pencil, Eye } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { calculateProgress } from '@/lib/questionnaire-utils'
+import { QuestionnaireForm } from './questionnaire-form'
+import {
+  createOrUpdateResponse,
+  completeResponse,
+} from '@/actions/questionnaire'
 import type {
   Questionnaire,
   QuestionnaireWithFields,
   QuestionnaireResponse,
+  Answers,
 } from '@/types/questionnaire'
 
 interface LeadQuestionnaireTabProps {
@@ -18,11 +24,66 @@ interface LeadQuestionnaireTabProps {
 }
 
 export function LeadQuestionnaireTab({
+  leadId,
   filled,
   unfilled,
   questionnairesWithFields,
 }: LeadQuestionnaireTabProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editingForm, setEditingForm] = useState<{
+    questionnaire: QuestionnaireWithFields
+    response: QuestionnaireResponse | null
+  } | null>(null)
+
+  const handleOpenUnfilled = (q: Questionnaire) => {
+    const full = questionnairesWithFields.get(q.id)
+    if (full) {
+      setEditingForm({ questionnaire: full, response: null })
+    }
+  }
+
+  const handleOpenFilled = (q: Questionnaire, response: QuestionnaireResponse) => {
+    const full = questionnairesWithFields.get(q.id)
+    if (full) {
+      setEditingForm({ questionnaire: full, response })
+    }
+  }
+
+  const handleClose = () => {
+    setEditingForm(null)
+  }
+
+  const handleSave = async (answers: Answers) => {
+    if (!editingForm) return { success: false, error: 'לא נבחר שאלון' }
+
+    const result = await createOrUpdateResponse({
+      questionnaire_id: editingForm.questionnaire.id,
+      target_type: 'lead',
+      target_id: leadId,
+      answers,
+      status: 'draft',
+    })
+
+    if (result.success && result.data) {
+      setEditingForm(prev => prev ? { ...prev, response: result.data! } : null)
+    }
+
+    return result
+  }
+
+  const handleComplete = async () => {
+    if (!editingForm?.response) {
+      return { success: false, error: 'אין תשובות לשמור' }
+    }
+
+    const result = await completeResponse(editingForm.response.id)
+
+    if (result.success) {
+      handleClose()
+    }
+
+    return result
+  }
 
   if (filled.length === 0 && unfilled.length === 0) {
     return (
@@ -33,6 +94,35 @@ export function LeadQuestionnaireTab({
     )
   }
 
+  // Form view - when editing a questionnaire
+  if (editingForm) {
+    const color = (editingForm.questionnaire.settings.color as string) ?? '#0073EA'
+
+    return (
+      <div className="monday-card overflow-hidden">
+        <div className="h-1" style={{ backgroundColor: color }} />
+        <div className="p-6">
+          {/* Back button */}
+          <button
+            onClick={handleClose}
+            className="flex items-center gap-2 text-sm text-[#676879] hover:text-[#323338] transition-colors mb-4"
+          >
+            <ChevronRight className="w-4 h-4" />
+            חזרה לרשימת שאלונים
+          </button>
+
+          <QuestionnaireForm
+            questionnaire={editingForm.questionnaire}
+            response={editingForm.response}
+            onSave={handleSave}
+            onComplete={handleComplete}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // List view
   return (
     <div className="space-y-4">
       {/* Filled Questionnaires */}
@@ -100,12 +190,21 @@ export function LeadQuestionnaireTab({
             {/* Expanded Content */}
             {isExpanded && full && (
               <div className="px-5 pb-5 border-t border-[#E6E9EF]">
-                <div className="pt-5">
-                  <QuestionnaireAnswersSummary
-                    questionnaire={full}
-                    response={response}
-                  />
+                {/* Edit button */}
+                <div className="flex justify-end pt-3 pb-2">
+                  <button
+                    onClick={() => handleOpenFilled(questionnaire, response)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-[#0073EA] hover:bg-[#F0F7FF] transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    ערוך
+                  </button>
                 </div>
+
+                <QuestionnaireAnswersSummary
+                  questionnaire={full}
+                  response={response}
+                />
               </div>
             )}
           </div>
@@ -131,9 +230,10 @@ export function LeadQuestionnaireTab({
               const color = settings.color as string | undefined ?? '#00A0B0'
 
               return (
-                <div
+                <button
                   key={q.id}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-[#F5F6F8]"
+                  onClick={() => handleOpenUnfilled(q)}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-[#F5F6F8] w-full text-right hover:bg-[#ECEDF0] transition-colors group"
                 >
                   <div
                     className="w-2 h-2 rounded-full shrink-0"
@@ -141,7 +241,8 @@ export function LeadQuestionnaireTab({
                   />
                   <span className="text-sm text-[#323338]">{q.name}</span>
                   <span className="text-xs text-[#9B9BAD] mr-auto">ממתין למילוי</span>
-                </div>
+                  <Pencil className="w-3.5 h-3.5 text-[#9B9BAD] opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
               )
             })}
           </div>

@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { Search, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
@@ -18,6 +18,7 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle, backHref, actions }: HeaderProps) {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const supabase = createClient()
 
@@ -34,13 +35,13 @@ export function Header({ title, subtitle, backHref, actions }: HeaderProps) {
         <div className="flex h-14 items-center justify-between px-6">
           <div className="flex items-center gap-4">
             {backHref && (
-              <Link
-                href={backHref}
+              <button
+                onClick={() => router.back()}
                 className="p-2 rounded-lg hover:bg-[#F5F6F8] text-[#676879] hover:text-[#323338] transition-all"
                 title="חזרה"
               >
                 <ArrowRight className="h-5 w-5" />
-              </Link>
+              </button>
             )}
             <div>
               <h1 className="text-lg font-semibold text-[#323338]">{title}</h1>

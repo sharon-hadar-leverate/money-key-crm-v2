@@ -25,20 +25,31 @@ export function FollowUpButton({ leadId, currentFollowUp }: FollowUpButtonProps)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     currentFollowUp ? new Date(currentFollowUp) : undefined
   )
+  const [selectedTime, setSelectedTime] = useState<string>(() => {
+    if (currentFollowUp) {
+      const d = new Date(currentFollowUp)
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    }
+    return '10:00'
+  })
 
-  const handleSelect = async (date: Date | undefined) => {
-    setSelectedDate(date)
+  const combineDateAndTime = (date: Date, time: string): Date => {
+    const [hours, minutes] = time.split(':').map(Number)
+    const combined = new Date(date)
+    combined.setHours(hours, minutes, 0, 0)
+    return combined
+  }
+
+  const saveFollowUp = async (date: Date | undefined) => {
     setIsUpdating(true)
-
     try {
       const result = await updateLeadFollowUp(
         leadId,
         date ? date.toISOString() : null
       )
-
       if (result.success) {
         toast.success(date ? 'תאריך מעקב נקבע' : 'תאריך מעקב הוסר')
-        setOpen(false)
+        if (!date) setOpen(false)
       } else {
         toast.error(result.error || 'שגיאה בעדכון תאריך המעקב')
       }
@@ -49,8 +60,28 @@ export function FollowUpButton({ leadId, currentFollowUp }: FollowUpButtonProps)
     }
   }
 
+  const handleDateSelect = async (date: Date | undefined) => {
+    if (!date) {
+      setSelectedDate(undefined)
+      await saveFollowUp(undefined)
+      return
+    }
+    const combined = combineDateAndTime(date, selectedTime)
+    setSelectedDate(combined)
+    await saveFollowUp(combined)
+  }
+
+  const handleTimeChange = async (time: string) => {
+    setSelectedTime(time)
+    if (!selectedDate) return
+    const combined = combineDateAndTime(selectedDate, time)
+    setSelectedDate(combined)
+    await saveFollowUp(combined)
+  }
+
   const handleClear = async () => {
-    await handleSelect(undefined)
+    setSelectedDate(undefined)
+    await saveFollowUp(undefined)
   }
 
   const hasFollowUp = !!selectedDate
@@ -71,7 +102,7 @@ export function FollowUpButton({ leadId, currentFollowUp }: FollowUpButtonProps)
           <CalendarClock className="h-4 w-4" />
           {hasFollowUp ? (
             <span className="font-medium">
-              {format(selectedDate, 'dd/MM/yyyy', { locale: he })}
+              {format(selectedDate, 'HH:mm dd/MM/yyyy', { locale: he })}
             </span>
           ) : (
             <span>לחזור בתאריך</span>
@@ -96,10 +127,22 @@ export function FollowUpButton({ leadId, currentFollowUp }: FollowUpButtonProps)
             )}
           </div>
         </div>
+        <div className="px-4 py-3 border-b border-[#E6E9EF] flex items-center gap-2">
+          <label htmlFor="follow-up-time" className="text-sm text-[#676879]">שעה:</label>
+          <input
+            id="follow-up-time"
+            type="time"
+            value={selectedTime}
+            onChange={(e) => handleTimeChange(e.target.value)}
+            disabled={isUpdating}
+            className="px-2 py-1 text-sm border border-[#E6E9EF] rounded-md focus:outline-none focus:border-[#00A0B0] text-[#323338]"
+          />
+        </div>
         <Calendar
           mode="single"
           selected={selectedDate}
-          onSelect={handleSelect}
+          defaultMonth={selectedDate || new Date()}
+          onSelect={handleDateSelect}
           disabled={(date) => date < new Date()}
           initialFocus
         />

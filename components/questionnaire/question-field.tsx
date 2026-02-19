@@ -140,36 +140,71 @@ function NumberField({ field, value, onChange, disabled }: Omit<QuestionFieldPro
   )
 }
 
-// Boolean Field (Checkbox or Toggle)
+// Boolean Field (Yes/No buttons)
 function BooleanField({ field, value, onChange, disabled }: Omit<QuestionFieldProps, 'error'>) {
   const config = field.config
-  const isChecked = value === true
 
+  // If field has a checkboxLabel, use single checkbox style (e.g. document checklists)
+  if (config.checkboxLabel) {
+    const isChecked = value === true
+    return (
+      <button
+        type="button"
+        onClick={() => onChange(!isChecked)}
+        disabled={disabled}
+        className={cn(
+          "flex items-center gap-3 w-full p-3 rounded-lg border transition-all text-right",
+          isChecked
+            ? "bg-[#E5F6F7] border-[#00A0B0]"
+            : "bg-white border-[#E6E9EF] hover:border-[#D0D4DB]",
+          disabled && "opacity-50 cursor-not-allowed"
+        )}
+      >
+        <div className={cn(
+          "w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0",
+          isChecked
+            ? "bg-[#00A0B0] border-[#00A0B0]"
+            : "bg-white border-[#D0D4DB]"
+        )}>
+          {isChecked && <Check className="w-3 h-3 text-white" />}
+        </div>
+        <span className="text-sm text-[#323338]">{config.checkboxLabel}</span>
+      </button>
+    )
+  }
+
+  // Default: Yes/No toggle buttons
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!isChecked)}
-      disabled={disabled}
-      className={cn(
-        "flex items-center gap-3 w-full p-3 rounded-lg border transition-all text-right",
-        isChecked
-          ? "bg-[#E5F6F7] border-[#00A0B0]"
-          : "bg-white border-[#E6E9EF] hover:border-[#D0D4DB]",
-        disabled && "opacity-50 cursor-not-allowed"
-      )}
-    >
-      <div className={cn(
-        "w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0",
-        isChecked
-          ? "bg-[#00A0B0] border-[#00A0B0]"
-          : "bg-white border-[#D0D4DB]"
-      )}>
-        {isChecked && <Check className="w-3 h-3 text-white" />}
-      </div>
-      <span className="text-sm text-[#323338]">
-        {config.checkboxLabel || (isChecked ? 'כן' : 'לא')}
-      </span>
-    </button>
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        disabled={disabled}
+        className={cn(
+          "flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium transition-all",
+          value === true
+            ? "bg-[#E5F6F7] border-[#00A0B0] text-[#00A0B0]"
+            : "bg-white border-[#E6E9EF] text-[#676879] hover:border-[#D0D4DB]",
+          disabled && "opacity-50 cursor-not-allowed"
+        )}
+      >
+        כן
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        disabled={disabled}
+        className={cn(
+          "flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium transition-all",
+          value === false
+            ? "bg-[#FFF0F0] border-[#D83A52] text-[#D83A52]"
+            : "bg-white border-[#E6E9EF] text-[#676879] hover:border-[#D0D4DB]",
+          disabled && "opacity-50 cursor-not-allowed"
+        )}
+      >
+        לא
+      </button>
+    </div>
   )
 }
 

@@ -20,15 +20,16 @@ import {
 } from '@/components/ui/popover'
 import { StatusBadge } from './status-badge'
 import { LeadAvatar } from './lead-avatar'
+import { FollowUpButton } from './follow-up-button'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import { MoreHorizontal, Search, Eye, Pencil, Trash, Users, Filter, ChevronDown, MessageSquare, Copy, Check } from 'lucide-react'
+import { MoreHorizontal, Search, Eye, Pencil, Trash, Users, Filter, ChevronDown, ChevronUp, MessageSquare, Copy, Check, CalendarClock, ArrowUpDown, GripVertical } from 'lucide-react'
 import { softDeleteLead, updateLeadStatus, getLeads } from '@/actions/leads'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PIPELINE_STAGES, STATUS_CONFIG } from '@/types/leads'
 import { PIPELINE_LABELS } from '@/lib/status-utils'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
-import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns'
+import { isWithinInterval, parseISO, startOfDay, endOfDay, isPast } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 import type { Lead, LeadStatus, PipelineStage } from '@/types/leads'
 import { cn } from '@/lib/utils'
@@ -40,10 +41,14 @@ interface LeadsTableProps {
   totalCount: number
   initialStage?: PipelineStage
   initialStatuses?: LeadStatus[]
+  initialHasFollowUp?: boolean
   noteCounts?: Record<string, number>
 }
 
 const PAGE_SIZE = 50
+
+type SortKey = 'name' | 'email' | 'phone' | 'status' | 'source' | 'expected_revenue' | 'follow_up_at' | 'created_at'
+type SortDirection = 'asc' | 'desc'
 
 // Inline status dropdown component
 function InlineStatusDropdown({
@@ -118,7 +123,7 @@ function InlineStatusDropdown({
   )
 }
 
-export function LeadsTable({ leads: initialLeads, totalCount, initialStage, initialStatuses, noteCounts: initialNoteCounts = {} }: LeadsTableProps) {
+export function LeadsTable({ leads: initialLeads, totalCount, initialStage, initialStatuses, initialHasFollowUp = false, noteCounts: initialNoteCounts = {} }: LeadsTableProps) {
   // Infinite scroll state
   const [allLeads, setAllLeads] = useState<Lead[]>(initialLeads)
   const [noteCounts] = useState<Record<string, number>>(initialNoteCounts)
@@ -141,8 +146,64 @@ export function LeadsTable({ leads: initialLeads, totalCount, initialStage, init
     }
     return new Set()
   })
+  const [followUpFilter, setFollowUpFilter] = useState(initialHasFollowUp)
   const [statusFilterOpen, setStatusFilterOpen] = useState(false)
   const [statusSearchQuery, setStatusSearchQuery] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const defaultColumnOrder: SortKey[] = ['name', 'email', 'phone', 'status', 'source', 'expected_revenue', 'follow_up_at', 'created_at']
+  const [columnOrder, setColumnOrder] = useState<SortKey[]>(defaultColumnOrder)
+  const dragColumnRef = useRef<SortKey | null>(null)
+  const [dragOverColumn, setDragOverColumn] = useState<SortKey | null>(null)
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc')
+      } else {
+        setSortKey(null)
+        setSortDirection('asc')
+      }
+    } else {
+      setSortKey(key)
+      setSortDirection('asc')
+    }
+  }
+
+  const handleColumnDragStart = (key: SortKey) => {
+    dragColumnRef.current = key
+  }
+
+  const handleColumnDragOver = (e: React.DragEvent, key: SortKey) => {
+    e.preventDefault()
+    if (dragColumnRef.current && dragColumnRef.current !== key) {
+      setDragOverColumn(key)
+    }
+  }
+
+  const handleColumnDrop = (key: SortKey) => {
+    const dragKey = dragColumnRef.current
+    if (!dragKey || dragKey === key) {
+      dragColumnRef.current = null
+      setDragOverColumn(null)
+      return
+    }
+    setColumnOrder(prev => {
+      const newOrder = [...prev]
+      const fromIndex = newOrder.indexOf(dragKey)
+      const toIndex = newOrder.indexOf(key)
+      newOrder.splice(fromIndex, 1)
+      newOrder.splice(toIndex, 0, dragKey)
+      return newOrder
+    })
+    dragColumnRef.current = null
+    setDragOverColumn(null)
+  }
+
+  const handleColumnDragEnd = () => {
+    dragColumnRef.current = null
+    setDragOverColumn(null)
+  }
 
   // Load more function for infinite scroll
   const loadMore = useCallback(async () => {
@@ -203,8 +264,8 @@ export function LeadsTable({ leads: initialLeads, totalCount, initialStage, init
     setStatusFilter(new Set())
   }
 
-  const filteredLeads = useMemo(() =>
-    allLeads.filter((lead) => {
+  const filteredLeads = useMemo(() => {
+    const filtered = allLeads.filter((lead) => {
       // Text search filter
       if (search) {
         const searchLower = search.toLowerCase()
@@ -232,9 +293,84 @@ export function LeadsTable({ leads: initialLeads, totalCount, initialStage, init
         }
       }
 
+      // Follow-up filter
+      if (followUpFilter) {
+        if (!lead.follow_up_at) return false
+      }
+
       return true
-    }),
-    [allLeads, search, dateRange, statusFilter]
+    })
+
+    const isOverdueFollowUp = (lead: Lead) =>
+      lead.follow_up_at ? isPast(new Date(lead.follow_up_at)) : false
+
+    // Always sort overdue follow-ups to the top, then apply user sort within each group
+    return [...filtered].sort((a, b) => {
+      const overdueA = isOverdueFollowUp(a)
+      const overdueB = isOverdueFollowUp(b)
+
+      // Overdue leads always come first
+      if (overdueA && !overdueB) return -1
+      if (!overdueA && overdueB) return 1
+
+      // Within same group (both overdue or both not), sort by oldest follow-up first if both overdue
+      if (overdueA && overdueB) {
+        const timeA = new Date(a.follow_up_at!).getTime()
+        const timeB = new Date(b.follow_up_at!).getTime()
+        if (timeA !== timeB) return timeA - timeB
+      }
+
+      // Then apply user sort if active
+      if (!sortKey) return 0
+
+      let valA: string | number | null = null
+      let valB: string | number | null = null
+
+      switch (sortKey) {
+        case 'name':
+          valA = a.name?.toLowerCase() ?? ''
+          valB = b.name?.toLowerCase() ?? ''
+          break
+        case 'email':
+          valA = a.email?.toLowerCase() ?? ''
+          valB = b.email?.toLowerCase() ?? ''
+          break
+        case 'phone':
+          valA = a.phone ?? ''
+          valB = b.phone ?? ''
+          break
+        case 'status':
+          valA = a.status ?? ''
+          valB = b.status ?? ''
+          break
+        case 'source':
+          valA = (a.utm_source || a.source || '').toLowerCase()
+          valB = (b.utm_source || b.source || '').toLowerCase()
+          break
+        case 'expected_revenue':
+          valA = a.expected_revenue ?? 0
+          valB = b.expected_revenue ?? 0
+          break
+        case 'follow_up_at':
+          valA = a.follow_up_at ? new Date(a.follow_up_at).getTime() : 0
+          valB = b.follow_up_at ? new Date(b.follow_up_at).getTime() : 0
+          break
+        case 'created_at':
+          valA = a.created_at ? new Date(a.created_at).getTime() : 0
+          valB = b.created_at ? new Date(b.created_at).getTime() : 0
+          break
+      }
+
+      if (valA === null && valB === null) return 0
+      if (valA === null) return 1
+      if (valB === null) return -1
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+  },
+    [allLeads, search, dateRange, statusFilter, followUpFilter, sortKey, sortDirection]
   )
 
   const handleStatusChange = async (id: string, status: LeadStatus) => {
@@ -389,6 +525,18 @@ export function LeadsTable({ leads: initialLeads, totalCount, initialStage, init
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Follow-up filter */}
+          <button
+            onClick={() => setFollowUpFilter(!followUpFilter)}
+            className={cn(
+              "filter-btn",
+              followUpFilter && "border-[#D17A00] bg-[#FFF0D6] text-[#D17A00]"
+            )}
+          >
+            <CalendarClock className="w-4 h-4" />
+            <span className="hidden sm:inline">לחזור בתאריך</span>
+          </button>
         </div>
 
         {/* Count badge */}
@@ -416,20 +564,58 @@ export function LeadsTable({ leads: initialLeads, totalCount, initialStage, init
                     onChange={toggleAllRows}
                   />
                 </th>
-                <th>שם</th>
-                <th>אימייל</th>
-                <th>טלפון</th>
-                <th>סטטוס</th>
-                <th>מקור</th>
-                <th>הכנסה צפויה</th>
-                <th>תאריך</th>
+                {columnOrder.map((key) => {
+                  const labels: Record<SortKey, string> = {
+                    name: 'שם',
+                    email: 'אימייל',
+                    phone: 'טלפון',
+                    status: 'סטטוס',
+                    source: 'מקור',
+                    expected_revenue: 'הכנסה צפויה',
+                    follow_up_at: 'לחזור בתאריך',
+                    created_at: 'תאריך',
+                  }
+                  return (
+                    <th
+                      key={key}
+                      draggable
+                      onDragStart={() => handleColumnDragStart(key)}
+                      onDragOver={(e) => handleColumnDragOver(e, key)}
+                      onDrop={() => handleColumnDrop(key)}
+                      onDragEnd={handleColumnDragEnd}
+                      className={cn(
+                        "cursor-grab active:cursor-grabbing select-none",
+                        dragOverColumn === key && "bg-[#E5F6F7]"
+                      )}
+                    >
+                      <div className="flex items-center gap-1">
+                        <GripVertical className="h-3 w-3 text-[#C4C4C4] shrink-0" />
+                        <button
+                          onClick={() => handleSort(key)}
+                          className="flex items-center gap-1 hover:text-[#00A0B0] transition-colors"
+                        >
+                          {labels[key]}
+                          {sortKey === key ? (
+                            sortDirection === 'asc' ? (
+                              <ChevronUp className="h-3.5 w-3.5 text-[#00A0B0]" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5 text-[#00A0B0]" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3 text-[#9B9BAD] opacity-0 group-hover/th:opacity-100" />
+                          )}
+                        </button>
+                      </div>
+                    </th>
+                  )
+                })}
                 <th className="w-12"></th>
               </tr>
             </thead>
             <tbody>
               {filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-12">
+                  <td colSpan={columnOrder.length + 2} className="text-center py-12">
                     <div className="empty-state">
                       <div className="w-12 h-12 rounded-full bg-[#F5F6F8] flex items-center justify-center mb-3">
                         <Users className="w-6 h-6 text-[#9B9BAD]" />
@@ -439,163 +625,197 @@ export function LeadsTable({ leads: initialLeads, totalCount, initialStage, init
                   </td>
                 </tr>
               ) : (
-                filteredLeads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className={`group ${selectedRows.has(lead.id) ? 'bg-[#E5F6F7]' : ''}`}
-                  >
-                    <td>
-                      <input
-                        type="checkbox"
-                        className="monday-checkbox"
-                        checked={selectedRows.has(lead.id)}
-                        onChange={() => toggleRowSelection(lead.id)}
-                      />
-                    </td>
-                    <td>
-                      <Link
-                        href={`/leads/${lead.id}`}
-                        className="flex items-center gap-3 group/link"
-                      >
-                        <LeadAvatar lead={lead} size="sm" />
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-[#323338] group-hover/link:text-[#00A0B0] transition-colors">
-                            {lead.name}
-                          </span>
-                          {lead.is_new && (
-                            <Image src={newLeadIcon} alt="New" width={20} height={20} />
-                          )}
-                          {lead.status === 'customer' && (
-                            <Image src={newCustomerIcon} alt="Customer" width={20} height={20} />
-                          )}
-                          {(noteCounts[lead.id] ?? 0) > 0 && (
-                            <span title={`${noteCounts[lead.id]} הערות`} className="text-[#E07239]">
-                              <MessageSquare className="h-3.5 w-3.5" />
+                filteredLeads.map((lead) => {
+                  const cellRenderers: Record<SortKey, React.ReactNode> = {
+                    name: (
+                      <td key="name">
+                        <Link
+                          href={`/leads/${lead.id}`}
+                          className="flex items-center gap-3 group/link"
+                        >
+                          <LeadAvatar lead={lead} size="sm" />
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-[#323338] group-hover/link:text-[#00A0B0] transition-colors">
+                              {lead.name}
                             </span>
+                            {lead.is_new && (
+                              <Image src={newLeadIcon} alt="New" width={20} height={20} />
+                            )}
+                            {lead.status === 'customer' && (
+                              <Image src={newCustomerIcon} alt="Customer" width={20} height={20} />
+                            )}
+                            {(noteCounts[lead.id] ?? 0) > 0 && (
+                              <span title={`${noteCounts[lead.id]} הערות`} className="text-[#E07239]">
+                                <MessageSquare className="h-3.5 w-3.5" />
+                              </span>
+                            )}
+                          </div>
+                        </Link>
+                      </td>
+                    ),
+                    email: (
+                      <td key="email" className="text-[#676879]">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate max-w-[150px]">
+                            {lead.email || <span className="text-[#C4C4C4]">-</span>}
+                          </span>
+                          {lead.email && (
+                            <button
+                              onClick={() => copyToClipboard(lead.email!, lead.id, 'email')}
+                              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-[#F5F6F8] transition-all"
+                              title="העתק אימייל"
+                            >
+                              {copiedId === `${lead.id}-email` ? (
+                                <Check className="h-3.5 w-3.5 text-[#00A0B0]" />
+                              ) : (
+                                <Copy className="h-3.5 w-3.5 text-[#9B9BAD]" />
+                              )}
+                            </button>
                           )}
                         </div>
-                      </Link>
-                    </td>
-                    <td className="text-[#676879]">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate max-w-[150px]">
-                          {lead.email || <span className="text-[#C4C4C4]">-</span>}
-                        </span>
-                        {lead.email && (
-                          <button
-                            onClick={() => copyToClipboard(lead.email!, lead.id, 'email')}
-                            className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-[#F5F6F8] transition-all"
-                            title="העתק אימייל"
-                          >
-                            {copiedId === `${lead.id}-email` ? (
-                              <Check className="h-3.5 w-3.5 text-[#00A0B0]" />
-                            ) : (
-                              <Copy className="h-3.5 w-3.5 text-[#9B9BAD]" />
-                            )}
-                          </button>
+                      </td>
+                    ),
+                    phone: (
+                      <td key="phone" className="text-[#676879] tabular-nums" dir="ltr">
+                        <div className="flex items-center gap-2">
+                          <span>{lead.phone || <span className="text-[#C4C4C4]">-</span>}</span>
+                          {lead.phone && (
+                            <button
+                              onClick={() => copyToClipboard(lead.phone!, lead.id, 'phone')}
+                              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-[#F5F6F8] transition-all"
+                              title="העתק טלפון"
+                            >
+                              {copiedId === `${lead.id}-phone` ? (
+                                <Check className="h-3.5 w-3.5 text-[#00A0B0]" />
+                              ) : (
+                                <Copy className="h-3.5 w-3.5 text-[#9B9BAD]" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    ),
+                    status: (
+                      <td key="status">
+                        <InlineStatusDropdown
+                          lead={lead}
+                          onStatusChange={handleStatusChange}
+                        />
+                      </td>
+                    ),
+                    source: (
+                      <td key="source">
+                        {(lead.utm_source || lead.source) ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded bg-[#F5F6F8] text-xs text-[#676879]">
+                            {lead.utm_source || lead.source}
+                          </span>
+                        ) : (
+                          <span className="text-[#C4C4C4]">-</span>
                         )}
-                      </div>
-                    </td>
-                    <td className="text-[#676879] tabular-nums" dir="ltr">
-                      <div className="flex items-center gap-2">
-                        <span>{lead.phone || <span className="text-[#C4C4C4]">-</span>}</span>
-                        {lead.phone && (
-                          <button
-                            onClick={() => copyToClipboard(lead.phone!, lead.id, 'phone')}
-                            className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-[#F5F6F8] transition-all"
-                            title="העתק טלפון"
-                          >
-                            {copiedId === `${lead.id}-phone` ? (
-                              <Check className="h-3.5 w-3.5 text-[#00A0B0]" />
-                            ) : (
-                              <Copy className="h-3.5 w-3.5 text-[#9B9BAD]" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <InlineStatusDropdown
-                        lead={lead}
-                        onStatusChange={handleStatusChange}
-                      />
-                    </td>
-                    <td>
-                      {(lead.utm_source || lead.source) ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded bg-[#F5F6F8] text-xs text-[#676879]">
-                          {lead.utm_source || lead.source}
+                      </td>
+                    ),
+                    expected_revenue: (
+                      <td key="expected_revenue">
+                        <span className="text-[#323338] font-medium number-display">
+                          {formatCurrency(lead.expected_revenue)}
                         </span>
-                      ) : (
-                        <span className="text-[#C4C4C4]">-</span>
+                      </td>
+                    ),
+                    follow_up_at: (
+                      <td key="follow_up_at">
+                        <FollowUpButton leadId={lead.id} currentFollowUp={lead.follow_up_at ?? null} />
+                      </td>
+                    ),
+                    created_at: (
+                      <td key="created_at" className="text-[#676879] text-sm tabular-nums">
+                        {formatDate(lead.created_at)}
+                      </td>
+                    ),
+                  }
+
+                  const isOverdue = lead.follow_up_at ? isPast(new Date(lead.follow_up_at)) : false
+
+                  return (
+                    <tr
+                      key={lead.id}
+                      className={cn(
+                        "group",
+                        selectedRows.has(lead.id)
+                          ? "bg-[#E5F6F7]"
+                          : isOverdue
+                            ? "bg-[#FFE5E5] hover:bg-[#FFD6D6]"
+                            : ""
                       )}
-                    </td>
-                    <td>
-                      <span className="text-[#323338] font-medium number-display">
-                        {formatCurrency(lead.expected_revenue)}
-                      </span>
-                    </td>
-                    <td className="text-[#676879] text-sm tabular-nums">
-                      {formatDate(lead.created_at)}
-                    </td>
-                    <td>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-2 rounded-lg hover:bg-[#F5F6F8] text-[#676879] hover:text-[#323338] transition-colors">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 bg-white border border-[#E6E9EF] shadow-lg">
-                          <DropdownMenuItem asChild className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8]">
-                            <Link href={`/leads/${lead.id}`} className="flex items-center">
-                              <Eye className="h-4 w-4 me-2" />
-                              צפייה
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8]">
-                            <Link href={`/leads/${lead.id}?edit=true`} className="flex items-center">
-                              <Pencil className="h-4 w-4 me-2" />
-                              עריכה
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-[#E6E9EF]" />
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8]">
-                              שנה סטטוס
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="bg-white border border-[#E6E9EF] shadow-lg max-h-80 overflow-y-auto min-w-[180px]">
-                              {(Object.entries(PIPELINE_STAGES) as [PipelineStage, readonly LeadStatus[]][]).map(([stage, statuses]) => (
-                                <div key={stage}>
-                                  <div className="px-2 py-1.5 text-xs font-semibold text-[#9B9BAD] bg-[#F5F6F8] sticky top-0">
-                                    {PIPELINE_LABELS[stage]}
+                    >
+                      <td>
+                        <input
+                          type="checkbox"
+                          className="monday-checkbox"
+                          checked={selectedRows.has(lead.id)}
+                          onChange={() => toggleRowSelection(lead.id)}
+                        />
+                      </td>
+                      {columnOrder.map((key) => cellRenderers[key])}
+                      <td>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-2 rounded-lg hover:bg-[#F5F6F8] text-[#676879] hover:text-[#323338] transition-colors">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 bg-white border border-[#E6E9EF] shadow-lg">
+                            <DropdownMenuItem asChild className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8]">
+                              <Link href={`/leads/${lead.id}`} className="flex items-center">
+                                <Eye className="h-4 w-4 me-2" />
+                                צפייה
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8]">
+                              <Link href={`/leads/${lead.id}?edit=true`} className="flex items-center">
+                                <Pencil className="h-4 w-4 me-2" />
+                                עריכה
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-[#E6E9EF]" />
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8]">
+                                שנה סטטוס
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="bg-white border border-[#E6E9EF] shadow-lg max-h-80 overflow-y-auto min-w-[180px]">
+                                {(Object.entries(PIPELINE_STAGES) as [PipelineStage, readonly LeadStatus[]][]).map(([stage, statuses]) => (
+                                  <div key={stage}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-[#9B9BAD] bg-[#F5F6F8] sticky top-0">
+                                      {PIPELINE_LABELS[stage]}
+                                    </div>
+                                    {statuses.map((status) => (
+                                      <DropdownMenuItem
+                                        key={status}
+                                        onClick={() => handleStatusChange(lead.id, status)}
+                                        disabled={lead.status === status}
+                                        className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8] flex items-center justify-between"
+                                      >
+                                        <StatusBadge status={status} size="sm" />
+                                        {lead.status === status && <span className="text-[#00A0B0]">✓</span>}
+                                      </DropdownMenuItem>
+                                    ))}
                                   </div>
-                                  {statuses.map((status) => (
-                                    <DropdownMenuItem
-                                      key={status}
-                                      onClick={() => handleStatusChange(lead.id, status)}
-                                      disabled={lead.status === status}
-                                      className="text-[#323338] hover:bg-[#F5F6F8] focus:bg-[#F5F6F8] flex items-center justify-between"
-                                    >
-                                      <StatusBadge status={status} size="sm" />
-                                      {lead.status === status && <span className="text-[#00A0B0]">✓</span>}
-                                    </DropdownMenuItem>
-                                  ))}
-                                </div>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                          <DropdownMenuSeparator className="bg-[#E6E9EF]" />
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(lead.id)}
-                            className="text-[#D83A52] hover:bg-[#FFD6D9]/30 focus:bg-[#FFD6D9]/30"
-                          >
-                            <Trash className="h-4 w-4 me-2" />
-                            מחק
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSeparator className="bg-[#E6E9EF]" />
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(lead.id)}
+                              className="text-[#D83A52] hover:bg-[#FFD6D9]/30 focus:bg-[#FFD6D9]/30"
+                            >
+                              <Trash className="h-4 w-4 me-2" />
+                              מחק
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

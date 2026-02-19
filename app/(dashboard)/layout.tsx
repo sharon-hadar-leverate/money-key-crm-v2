@@ -8,8 +8,10 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#F7F8FA]">
       <Sidebar />
-      {/* No margin on mobile, 288px (18rem/w-72) margin on desktop for sidebar */}
-      <main className="md:ms-72 min-h-screen">
+      {/* Margin driven by --sidebar-width CSS variable set by Sidebar component */}
+      <main
+        className="min-h-screen transition-[margin] duration-300 ease-out md:[margin-inline-start:var(--sidebar-width,18rem)]"
+      >
         {children}
       </main>
     </div>

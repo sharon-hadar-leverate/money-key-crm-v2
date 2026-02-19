@@ -8,6 +8,7 @@ import { CampaignChart } from '@/components/dashboard/campaign-chart'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { UpcomingFollowups } from '@/components/dashboard/upcoming-followups'
 import { DateRangeFilter } from '@/components/dashboard/date-range-filter'
+import { MetricsExplanation } from '@/components/dashboard/metrics-explanation'
 import { Header } from '@/components/layout/header'
 import {
   getLeadKPIs,
@@ -58,6 +59,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         />
       </Suspense>
       <div className="p-6 space-y-6">
+        {/* Metrics Explanation (collapsible) */}
+        <MetricsExplanation />
+
         {/* KPI Cards - Pipeline stages */}
         <KPICards kpis={kpis} />
 

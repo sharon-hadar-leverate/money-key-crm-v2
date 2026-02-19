@@ -7,7 +7,7 @@ import Link from 'next/link'
 import type { PipelineStage, LeadStatus } from '@/types/leads'
 
 interface LeadsPageProps {
-  searchParams: Promise<{ stage?: string; statuses?: string }>
+  searchParams: Promise<{ stage?: string; statuses?: string; hasFollowUp?: string }>
 }
 
 export default async function LeadsPage({ searchParams }: LeadsPageProps) {
@@ -49,6 +49,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
           totalCount={count}
           initialStage={initialStage}
           initialStatuses={initialStatuses}
+          initialHasFollowUp={params.hasFollowUp === 'true'}
           noteCounts={noteCounts}
         />
       </div>

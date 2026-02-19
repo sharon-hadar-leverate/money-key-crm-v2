@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Info, ChevronDown, ChevronUp, Calendar, GitCommitHorizontal, TrendingUp, Wallet, CircleDollarSign, Receipt, Users, Target, BarChart3 } from 'lucide-react'
+import { Info, ChevronDown, ChevronUp, GitCommitHorizontal, TrendingUp, Wallet, CircleDollarSign, Receipt, Users, Target, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface MetricExplanation {

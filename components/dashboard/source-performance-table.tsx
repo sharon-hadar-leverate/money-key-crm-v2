@@ -2,10 +2,10 @@
 
 import { Globe } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
-import type { SourcePerformance } from '@/actions/kpis'
+import type { EnhancedSourcePerformance } from '@/actions/kpis'
 
 interface SourcePerformanceTableProps {
-  data: SourcePerformance[]
+  data: EnhancedSourcePerformance[]
 }
 
 export function SourcePerformanceTable({ data }: SourcePerformanceTableProps) {
@@ -38,12 +38,14 @@ export function SourcePerformanceTable({ data }: SourcePerformanceTableProps) {
               <th className="text-center px-3 py-3.5 font-semibold text-[#676879] text-xs uppercase tracking-wide">המרה</th>
               <th className="text-center px-3 py-3.5 font-semibold text-[#676879] text-xs uppercase tracking-wide">הכנסה</th>
               <th className="text-center px-3 py-3.5 font-semibold text-[#676879] text-xs uppercase tracking-wide">ממוצע</th>
+              <th className="text-center px-3 py-3.5 font-semibold text-[#676879] text-xs uppercase tracking-wide">גבייה</th>
+              <th className="text-center px-3 py-3.5 font-semibold text-[#676879] text-xs uppercase tracking-wide">ימי המרה</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-12 text-[#9B9BAD]">
+                <td colSpan={7} className="text-center py-12 text-[#9B9BAD]">
                   <Globe className="h-8 w-8 mx-auto mb-2 opacity-40" />
                   <p>אין נתונים להצגה</p>
                 </td>
@@ -90,6 +92,22 @@ export function SourcePerformanceTable({ data }: SourcePerformanceTableProps) {
                   <td className="px-3 py-4 text-center">
                     <span className="text-[#676879] number-display text-sm">
                       {row.avgDealSize > 0 ? formatCurrency(row.avgDealSize) : '-'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-4 text-center">
+                    <span className={`badge-pro ${
+                      row.collectionRate >= 50
+                        ? 'bg-[#D4F4DD] text-[#00854D]'
+                        : row.collectionRate > 0
+                          ? 'bg-[#FFF0D6] text-[#D17A00]'
+                          : 'bg-[#F5F6F8] text-[#676879]'
+                    }`}>
+                      {row.collectionRate > 0 ? `${row.collectionRate.toFixed(0)}%` : '-'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-4 text-center">
+                    <span className="text-[#676879] number-display text-sm">
+                      {row.avgDaysToConvert > 0 ? `${row.avgDaysToConvert}d` : '-'}
                     </span>
                   </td>
                 </tr>

@@ -3,6 +3,12 @@
 import { useState } from 'react'
 import { Info, ChevronDown, ChevronUp, GitCommitHorizontal, TrendingUp, Wallet, CircleDollarSign, Receipt, Users, Target, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { DataQualityResult } from '@/actions/kpis'
+
+interface MetricsExplanationProps {
+  qualityStats?: DataQualityResult
+  isFiltered?: boolean
+}
 
 interface MetricExplanation {
   icon: React.ReactNode
@@ -59,8 +65,8 @@ const METRIC_EXPLANATIONS: MetricExplanation[] = [
     icon: <BarChart3 className="h-4 w-4 text-[#0073EA]" />,
     title: 'גרף לידים לאורך זמן',
     basis: 'status_change',
-    formula: 'לידים חדשים = לפי תאריך יצירה | הגיעו לסגירה = לפי תאריך שינוי סטטוס',
-    explanation: 'הגרף מציג שני נתונים: לידים חדשים (לפי תאריך יצירה) ולידים שהגיעו לסגירה (לפי תאריך שינוי הסטטוס). לכן ייתכן שביום מסוים יהיו יותר סגירות מאשר לידים חדשים.',
+    formula: 'לידים חדשים = לפי תאריך יצירה | סגירה = כל מעבר לשלב סגירה (כולל סטטוסים ישנים) | גבייה = → גבייה הושלמה',
+    explanation: 'הגרף מציג שלושה נתונים: לידים חדשים (לפי תאריך יצירה), הגיעו לסגירה (כל מעבר מכל שלב לשלב סגירה — כולל סטטוסים ישנים כמו new, contacted, customer), וגבייה הושלמה (ליד שהגיע לסטטוס גבייה הושלמה). רק האירוע האחרון לכל ליד נספר בכל קטגוריה.',
   },
   {
     icon: <GitCommitHorizontal className="h-4 w-4 text-[#00A0B0]" />,
@@ -71,8 +77,11 @@ const METRIC_EXPLANATIONS: MetricExplanation[] = [
   },
 ]
 
-export function MetricsExplanation() {
+export function MetricsExplanation({ qualityStats, isFiltered }: MetricsExplanationProps) {
   const [isOpen, setIsOpen] = useState(false)
+
+  const showCoverage = isFiltered && qualityStats
+  const lowCoverage = showCoverage && qualityStats.eventCoverage < 0.8
 
   return (
     <div className="monday-card overflow-hidden">
@@ -86,6 +95,13 @@ export function MetricsExplanation() {
         <div className="flex-1">
           <span className="text-sm font-semibold text-[#323338]">איך מחושבים המדדים?</span>
         </div>
+        {showCoverage && (
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+            lowCoverage ? 'bg-[#FFF0D6] text-[#D17A00]' : 'bg-[#D4F4DD] text-[#00854D]'
+          }`}>
+            כיסוי אירועים: {Math.round(qualityStats.eventCoverage * 100)}% — {qualityStats.leadsWithEvents} מתוך {qualityStats.totalLeadsInWindow} לידים
+          </span>
+        )}
         {isOpen ? (
           <ChevronUp className="h-4 w-4 text-[#9B9BAD]" />
         ) : (
@@ -114,7 +130,9 @@ export function MetricsExplanation() {
                 "rounded-xl border px-4 py-3",
                 metric.basis === 'creation'
                   ? "border-[#CCE5FF]/60 bg-[#F5FAFF]"
-                  : "border-[#EDD9FB]/60 bg-[#FBF6FF]"
+                  : lowCoverage && metric.basis === 'status_change'
+                    ? "border-[#FFF0D6]/60 bg-[#FFFDF5]"
+                    : "border-[#EDD9FB]/60 bg-[#FBF6FF]"
               )}
             >
               <div className="flex items-center gap-2 mb-1">
@@ -128,6 +146,11 @@ export function MetricsExplanation() {
                 )}>
                   {metric.basis === 'creation' ? 'תאריך יצירה' : 'תאריך שינוי סטטוס'}
                 </span>
+                {lowCoverage && metric.basis === 'status_change' && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#FFF0D6] text-[#D17A00]">
+                    כיסוי חלקי
+                  </span>
+                )}
               </div>
               <p className="text-xs text-[#676879] font-mono mb-1" dir="rtl">{metric.formula}</p>
               <p className="text-xs text-[#9B9BAD] leading-relaxed">{metric.explanation}</p>

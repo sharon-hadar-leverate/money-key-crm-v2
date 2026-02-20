@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { CalendarIcon } from "lucide-react"
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns"
+import { format, subDays, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear } from "date-fns"
 import { he } from "date-fns/locale"
 import { DateRange } from "react-day-picker"
 
@@ -29,6 +29,9 @@ const PRESETS = [
   { label: "30 יום", getValue: () => ({ from: subDays(new Date(), 29), to: new Date() }) },
   { label: "השבוע", getValue: () => ({ from: startOfWeek(new Date(), { locale: he }), to: endOfWeek(new Date(), { locale: he }) }) },
   { label: "החודש", getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
+  { label: "3 חודשים", getValue: () => ({ from: subMonths(new Date(), 3), to: new Date() }) },
+  { label: "6 חודשים", getValue: () => ({ from: subMonths(new Date(), 6), to: new Date() }) },
+  { label: "השנה", getValue: () => ({ from: startOfYear(new Date()), to: new Date() }) },
 ] as const
 
 export function DateRangePicker({

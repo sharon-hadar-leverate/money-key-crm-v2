@@ -6,6 +6,34 @@ import { Tables } from '@/lib/tables'
 import { LEAD_STATUSES, STATUS_CONFIG, PIPELINE_STAGES } from '@/types/leads'
 import type { LeadKPIs, UTMPerformance, ConversionFunnelItem, TimeSeriesData, LeadStatus, PipelineStage } from '@/types/leads'
 
+// ============ DATA NORMALISATION HELPERS ============
+
+// Maps deprecated status names → canonical equivalents
+const DEPRECATED_TO_CANONICAL: Record<string, string> = {
+  'new': 'not_contacted',
+  'customer': 'payment_completed',
+  'contacted': 'message_sent',
+  'completed': 'waiting_for_payment',
+  'paying_customer': 'payment_completed',
+}
+
+// All deprecated pre-sale statuses (including JSON-quoted variants) for inclusive event queries
+const ALL_DEPRECATED_PRESALE_STATUSES: string[] = [
+  'new', '"new"', 'customer', '"customer"', 'contacted', '"contacted"',
+]
+
+// Strip JSON-quoted event values: '"new"' → 'new'
+function normaliseEventValue(value: string | null): string {
+  if (!value) return ''
+  if (value.startsWith('"') && value.endsWith('"')) return value.slice(1, -1)
+  return value
+}
+
+// Normalise deprecated status to canonical (after stripping quotes)
+function canonicaliseStatus(value: string): string {
+  return DEPRECATED_TO_CANONICAL[value] || value
+}
+
 // Helper to check authentication
 async function requireAuth(): Promise<{ authenticated: true } | { authenticated: false; error: string }> {
   // Dev bypass - skip auth in development when BYPASS_AUTH is set
@@ -40,24 +68,48 @@ interface DateFilter {
 }
 
 // Helper: Get lead IDs that entered specific statuses within a date range (via lead_events)
+// Expanded to include deprecated + JSON-quoted variants, and filters self-transitions
 async function getLeadIdsChangedToStatus(
   statuses: string[],
   dateFilter?: DateFilter
 ): Promise<string[]> {
   const supabase = await createClient()
 
+  // Build expanded filter: include JSON-quoted and deprecated variants
+  const expandedStatuses = new Set<string>(statuses)
+  for (const s of statuses) {
+    expandedStatuses.add(`"${s}"`) // JSON-quoted variant
+  }
+  // Also add deprecated names that map to any of the requested canonical statuses
+  for (const [deprecated, canonical] of Object.entries(DEPRECATED_TO_CANONICAL)) {
+    if (statuses.includes(canonical)) {
+      expandedStatuses.add(deprecated)
+      expandedStatuses.add(`"${deprecated}"`)
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from(Tables.lead_events)
-    .select('lead_id')
+    .select('lead_id, old_value, new_value')
     .eq('event_type', 'status_changed')
-    .in('new_value', statuses)
+    .in('new_value', [...expandedStatuses])
 
   if (dateFilter?.from) query = query.gte('created_at', dateFilter.from)
   if (dateFilter?.to) query = query.lte('created_at', dateFilter.to)
 
   const { data } = await query
-  return [...new Set((data?.map((e: { lead_id: string }) => e.lead_id) || []) as string[])]
+
+  // Post-filter: skip self-transitions (old_value == new_value after normalisation)
+  const leadIds = (data as { lead_id: string; old_value: string | null; new_value: string | null }[] || [])
+    .filter((e) => {
+      const normOld = normaliseEventValue(e.old_value)
+      const normNew = normaliseEventValue(e.new_value)
+      return normOld !== normNew
+    })
+    .map((e) => e.lead_id)
+
+  return [...new Set(leadIds)]
 }
 
 // Internal implementation functions wrapped with React.cache
@@ -149,6 +201,8 @@ const getLeadKPIsInternal = cache(async (dateFilter?: DateFilter): Promise<LeadK
       getLeadIdsChangedToStatus(['payment_completed'], dateFilter),
     ])
 
+    const eventFoundSignedIds = new Set(signedLeadIds)
+
     // Fetch income data for leads that changed to signed statuses
     if (signedLeadIds.length > 0) {
       const { data: signedLeadsData } = await supabase
@@ -173,6 +227,30 @@ const getLeadKPIsInternal = cache(async (dateFilter?: DateFilter): Promise<LeadK
         }
       })
     }
+
+    // Hybrid fallback: for signed-stage leads NOT found via events, include revenue from current status
+    // This catches "ghost" leads with no status_changed events (e.g. payment_completed leads from before event tracking)
+    let fallbackQuery = supabase
+      .from(Tables.leads)
+      .select('id, refund_amount, commission_rate, status')
+      .is('deleted_at', null)
+      .not('refund_amount', 'is', null)
+      .in('status', signedStatuses)
+
+    if (dateFilter.from) fallbackQuery = fallbackQuery.gte('created_at', dateFilter.from)
+    if (dateFilter.to) fallbackQuery = fallbackQuery.lte('created_at', dateFilter.to)
+
+    const { data: fallbackData } = await fallbackQuery
+    fallbackData?.forEach((lead) => {
+      if (!eventFoundSignedIds.has(lead.id)) {
+        const refund = lead.refund_amount ?? 0
+        const rate = (lead.commission_rate ?? 0) / 100
+        expectedIncome += refund * rate
+        if (lead.status === 'payment_completed') {
+          amountCollected += refund * rate
+        }
+      }
+    })
 
     // Refunds still use cohort (created_at) approach
     let refundQuery = supabase
@@ -607,10 +685,25 @@ export async function getRecentActivity(limit: number = 5): Promise<{
 export interface DailyTrend {
   date: string
   total: number
-  converted: number  // leads that reached signed stage
+  converted: number        // follow_up/warm → signed (actual sale)
+  paymentCompleted: number // → payment_completed (money collected)
 }
 
-const getDailyTrendsInternal = cache(async (days: number = 30, dateFilter?: DateFilter): Promise<DailyTrend[]> => {
+export interface TrendTransaction {
+  lead_id: string
+  lead_name: string
+  old_value: string
+  new_value: string
+  created_at: string
+  type: 'sale' | 'payment'
+}
+
+export interface DailyTrendsResult {
+  trends: DailyTrend[]
+  transactions: TrendTransaction[]
+}
+
+const getDailyTrendsInternal = cache(async (days: number = 30, dateFilter?: DateFilter): Promise<DailyTrendsResult> => {
   const supabase = await createClient()
 
   const startDate = new Date()
@@ -628,14 +721,12 @@ const getDailyTrendsInternal = cache(async (days: number = 30, dateFilter?: Date
     leadsQuery = leadsQuery.lte('created_at', dateFilter.to)
   }
 
-  // Query 2: Conversions per day from lead_events (by status change date)
-  const signedStatuses = [...PIPELINE_STAGES.signed] as string[]
+  // Query 2: All status_changed events in the period (we classify them locally)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let eventsQuery = (supabase as any)
     .from(Tables.lead_events)
-    .select('created_at')
+    .select('lead_id, old_value, new_value, created_at')
     .eq('event_type', 'status_changed')
-    .in('new_value', signedStatuses)
     .gte('created_at', fromDate)
 
   if (dateFilter?.to) {
@@ -647,6 +738,65 @@ const getDailyTrendsInternal = cache(async (days: number = 30, dateFilter?: Date
     eventsQuery,
   ])
 
+  // Classify events and keep only last qualifying event per lead per category
+  const followUpStatuses = [...PIPELINE_STAGES.follow_up] as string[]
+  const warmStatuses = [...PIPELINE_STAGES.warm] as string[]
+  const signedStatuses = [...PIPELINE_STAGES.signed] as string[]
+  const exitStatuses = [...PIPELINE_STAGES.exit] as string[]
+  // Expanded: any pre-signed status (including deprecated) can be a "from" status for a sale
+  const saleFromStatuses = [
+    ...followUpStatuses, ...warmStatuses,
+    // Deprecated statuses that also represent pre-sale stages
+    'new', 'contacted', 'customer',
+    // Exit statuses (a lead can come back from exit → signed)
+    ...exitStatuses,
+  ]
+
+  type EventRecord = { lead_id: string; old_value: string; new_value: string; created_at: string }
+
+  // Maps: lead_id → last qualifying event (with normalised values for display)
+  const lastSalePerLead = new Map<string, EventRecord>()
+  const lastPaymentPerLead = new Map<string, EventRecord>()
+
+  ;(eventsData as EventRecord[] | null)?.forEach((event) => {
+    // Normalise values: strip JSON quotes
+    const normOld = normaliseEventValue(event.old_value)
+    const normNew = normaliseEventValue(event.new_value)
+
+    // Skip self-transitions after normalisation
+    if (normOld === normNew) return
+
+    // Canonicalise for classification (e.g. 'new' → 'not_contacted')
+    const canonOld = canonicaliseStatus(normOld)
+    const canonNew = canonicaliseStatus(normNew)
+
+    // Build a normalised event record for storage (display-friendly values)
+    const normEvent: EventRecord = {
+      lead_id: event.lead_id,
+      old_value: normOld,
+      new_value: normNew,
+      created_at: event.created_at,
+    }
+
+    // Sale: pre-sale status → signed stage (using canonical names for matching)
+    if (
+      (saleFromStatuses.includes(normOld) || saleFromStatuses.includes(canonOld)) &&
+      (signedStatuses.includes(normNew) || signedStatuses.includes(canonNew))
+    ) {
+      const existing = lastSalePerLead.get(event.lead_id)
+      if (!existing || event.created_at > existing.created_at) {
+        lastSalePerLead.set(event.lead_id, normEvent)
+      }
+    }
+    // Payment: anything → payment_completed (including deprecated 'customer', 'paying_customer')
+    if (canonNew === 'payment_completed') {
+      const existing = lastPaymentPerLead.get(event.lead_id)
+      if (!existing || event.created_at > existing.created_at) {
+        lastPaymentPerLead.set(event.lead_id, normEvent)
+      }
+    }
+  })
+
   // Count total leads per day
   const totalMap = new Map<string, number>()
   leadsData?.forEach((lead: { created_at: string | null }) => {
@@ -654,32 +804,81 @@ const getDailyTrendsInternal = cache(async (days: number = 30, dateFilter?: Date
     totalMap.set(date, (totalMap.get(date) || 0) + 1)
   })
 
-  // Count conversions per day
+  // Count sales per day (last event per lead)
   const convertedMap = new Map<string, number>()
-  ;(eventsData as { created_at: string }[] | null)?.forEach((event) => {
-    const date = new Date(event.created_at!).toISOString().split('T')[0]
+  lastSalePerLead.forEach((event) => {
+    const date = new Date(event.created_at).toISOString().split('T')[0]
     convertedMap.set(date, (convertedMap.get(date) || 0) + 1)
   })
 
+  // Count payments per day (last event per lead)
+  const paymentMap = new Map<string, number>()
+  lastPaymentPerLead.forEach((event) => {
+    const date = new Date(event.created_at).toISOString().split('T')[0]
+    paymentMap.set(date, (paymentMap.get(date) || 0) + 1)
+  })
+
+  // Batch-fetch lead names for transactions table
+  const allLeadIds = new Set<string>([...lastSalePerLead.keys(), ...lastPaymentPerLead.keys()])
+  const leadNameMap = new Map<string, string>()
+
+  if (allLeadIds.size > 0) {
+    const { data: leadsInfo } = await supabase
+      .from(Tables.leads)
+      .select('id, name')
+      .in('id', [...allLeadIds])
+
+    leadsInfo?.forEach((lead) => {
+      leadNameMap.set(lead.id, lead.name || 'ללא שם')
+    })
+  }
+
+  // Build transactions list
+  const transactions: TrendTransaction[] = []
+  lastSalePerLead.forEach((event) => {
+    transactions.push({
+      lead_id: event.lead_id,
+      lead_name: leadNameMap.get(event.lead_id) || 'ללא שם',
+      old_value: event.old_value,
+      new_value: event.new_value,
+      created_at: event.created_at,
+      type: 'sale',
+    })
+  })
+  lastPaymentPerLead.forEach((event) => {
+    transactions.push({
+      lead_id: event.lead_id,
+      lead_name: leadNameMap.get(event.lead_id) || 'ללא שם',
+      old_value: event.old_value,
+      new_value: event.new_value,
+      created_at: event.created_at,
+      type: 'payment',
+    })
+  })
+
+  // Sort transactions by date descending
+  transactions.sort((a, b) => b.created_at.localeCompare(a.created_at))
+
   // Fill missing dates
-  const result: DailyTrend[] = []
+  const trends: DailyTrend[] = []
   const current = new Date(dateFilter?.from || startDate)
   const end = dateFilter?.to ? new Date(dateFilter.to) : new Date()
 
   while (current <= end) {
     const dateStr = current.toISOString().split('T')[0]
-    result.push({
+    trends.push({
       date: dateStr,
       total: totalMap.get(dateStr) || 0,
       converted: convertedMap.get(dateStr) || 0,
+      paymentCompleted: paymentMap.get(dateStr) || 0,
     })
     current.setDate(current.getDate() + 1)
   }
 
-  return result
+  return { trends, transactions }
 })
 
-export async function getDailyTrends(days: number = 30, dateFrom?: string, dateTo?: string): Promise<DailyTrend[]> {
+export async function getDailyTrends(days: number = 30, dateFrom?: string, dateTo?: string): Promise<DailyTrendsResult> {
   const authResult = await requireAuth()
   if (!authResult.authenticated) throw new Error(authResult.error)
   const dateFilter = (dateFrom || dateTo) ? { from: dateFrom, to: dateTo } : undefined
@@ -696,12 +895,12 @@ export interface SourcePerformance {
   avgDealSize: number
 }
 
-const getSourcePerformanceInternal = cache(async (dateFilter?: DateFilter): Promise<SourcePerformance[]> => {
+const getSourcePerformanceInternal = cache(async (dateFilter?: DateFilter): Promise<EnhancedSourcePerformance[]> => {
   const supabase = await createClient()
 
   let query = supabase
     .from(Tables.leads)
-    .select('utm_source, source, status, refund_amount, commission_rate')
+    .select('id, created_at, utm_source, source, status, refund_amount, commission_rate')
     .is('deleted_at', null)
 
   if (dateFilter?.from) query = query.gte('created_at', dateFilter.from)
@@ -710,34 +909,80 @@ const getSourcePerformanceInternal = cache(async (dateFilter?: DateFilter): Prom
   const { data } = await query
 
   const signedStatuses = PIPELINE_STAGES.signed as readonly string[]
-  const sourceMap = new Map<string, { leads: number; converted: number; revenue: number }>()
+  const sourceMap = new Map<string, {
+    leads: number; converted: number; revenue: number
+    paymentCompleted: number
+    leadCreationDates: Map<string, string> // lead_id → created_at
+  }>()
 
   data?.forEach((lead) => {
     const src = lead.utm_source || lead.source || 'ישיר'
-    const existing = sourceMap.get(src) ?? { leads: 0, converted: 0, revenue: 0 }
+    const existing = sourceMap.get(src) ?? {
+      leads: 0, converted: 0, revenue: 0, paymentCompleted: 0,
+      leadCreationDates: new Map(),
+    }
     existing.leads++
     if (signedStatuses.includes(lead.status as string)) {
       existing.converted++
       const refund = lead.refund_amount ?? 0
       const rate = (lead.commission_rate ?? 0) / 100
       existing.revenue += refund * rate
+      existing.leadCreationDates.set(lead.id, lead.created_at!)
+      if (lead.status === 'payment_completed') {
+        existing.paymentCompleted++
+      }
     }
     sourceMap.set(src, existing)
   })
 
+  // Fetch first signed event per lead for avg days calculation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: signedEvents } = await (supabase as any)
+    .from(Tables.lead_events)
+    .select('lead_id, new_value, created_at')
+    .eq('event_type', 'status_changed')
+    .in('new_value', [...signedStatuses])
+    .order('created_at', { ascending: true })
+
+  // First signed event per lead
+  const firstSignedEvent = new Map<string, string>()
+  ;(signedEvents as { lead_id: string; new_value: string; created_at: string }[] || []).forEach((e) => {
+    if (!firstSignedEvent.has(e.lead_id)) {
+      firstSignedEvent.set(e.lead_id, e.created_at)
+    }
+  })
+
   return Array.from(sourceMap.entries())
-    .map(([source, stats]) => ({
-      source,
-      leads: stats.leads,
-      converted: stats.converted,
-      conversionRate: stats.leads > 0 ? (stats.converted / stats.leads) * 100 : 0,
-      revenue: stats.revenue,
-      avgDealSize: stats.converted > 0 ? stats.revenue / stats.converted : 0,
-    }))
+    .map(([source, stats]) => {
+      // Avg days to convert for this source
+      let totalDays = 0
+      let daysSampleCount = 0
+      stats.leadCreationDates.forEach((createdAt, leadId) => {
+        const signedAt = firstSignedEvent.get(leadId)
+        if (signedAt) {
+          const days = (new Date(signedAt).getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
+          if (days >= 0) {
+            totalDays += days
+            daysSampleCount++
+          }
+        }
+      })
+
+      return {
+        source,
+        leads: stats.leads,
+        converted: stats.converted,
+        conversionRate: stats.leads > 0 ? (stats.converted / stats.leads) * 100 : 0,
+        revenue: stats.revenue,
+        avgDealSize: stats.converted > 0 ? stats.revenue / stats.converted : 0,
+        collectionRate: stats.converted > 0 ? (stats.paymentCompleted / stats.converted) * 100 : 0,
+        avgDaysToConvert: daysSampleCount > 0 ? Math.round((totalDays / daysSampleCount) * 10) / 10 : 0,
+      }
+    })
     .sort((a, b) => b.leads - a.leads)
 })
 
-export async function getSourcePerformance(dateFrom?: string, dateTo?: string): Promise<SourcePerformance[]> {
+export async function getSourcePerformance(dateFrom?: string, dateTo?: string): Promise<EnhancedSourcePerformance[]> {
   const authResult = await requireAuth()
   if (!authResult.authenticated) throw new Error(authResult.error)
   const dateFilter = (dateFrom || dateTo) ? { from: dateFrom, to: dateTo } : undefined
@@ -828,7 +1073,7 @@ const getStatusBreakdownInternal = cache(async (dateFilter?: DateFilter): Promis
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let eventsQuery = (supabase as any)
       .from(Tables.lead_events)
-      .select('lead_id, new_value, created_at')
+      .select('lead_id, old_value, new_value, created_at')
       .eq('event_type', 'status_changed')
       .not('new_value', 'is', null)
 
@@ -837,37 +1082,73 @@ const getStatusBreakdownInternal = cache(async (dateFilter?: DateFilter): Promis
 
     const { data: events } = await eventsQuery
 
-    // Keep only the latest status change per lead
+    // Keep only the latest status change per lead (normalised, skip self-transitions)
     const latestPerLead = new Map<string, { status: string; created_at: string }>()
-    ;(events as { lead_id: string; new_value: string; created_at: string }[] | null)?.forEach((event) => {
+    const eventLeadIds = new Set<string>()
+
+    ;(events as { lead_id: string; old_value: string | null; new_value: string; created_at: string }[] | null)?.forEach((event) => {
+      const normOld = normaliseEventValue(event.old_value)
+      const normNew = normaliseEventValue(event.new_value)
+
+      // Skip self-transitions after normalisation
+      if (normOld === normNew) return
+
+      // Canonicalise deprecated statuses for classification
+      const canonNew = canonicaliseStatus(normNew)
+
+      eventLeadIds.add(event.lead_id)
+
       const existing = latestPerLead.get(event.lead_id)
       if (!existing || event.created_at > existing.created_at) {
-        latestPerLead.set(event.lead_id, { status: event.new_value, created_at: event.created_at })
+        latestPerLead.set(event.lead_id, { status: canonNew, created_at: event.created_at })
       }
     })
 
-    // Fetch revenue data for these leads
-    const leadIds = [...latestPerLead.keys()]
-    let revenueMap = new Map<string, number>()
-    if (leadIds.length > 0) {
-      const { data: leadsData } = await supabase
-        .from(Tables.leads)
-        .select('id, expected_revenue')
-        .is('deleted_at', null)
-        .in('id', leadIds)
+    // Hybrid fallback: for leads in the date window (by created_at) that have NO status_changed events,
+    // fall back to their current leads.status
+    let fallbackQuery = supabase
+      .from(Tables.leads)
+      .select('id, status, expected_revenue')
+      .is('deleted_at', null)
 
-      leadsData?.forEach((lead) => {
-        revenueMap.set(lead.id, lead.expected_revenue ?? 0)
-      })
+    if (dateFilter.from) fallbackQuery = fallbackQuery.gte('created_at', dateFilter.from)
+    if (dateFilter.to) fallbackQuery = fallbackQuery.lte('created_at', dateFilter.to)
+
+    const { data: fallbackLeads } = await fallbackQuery
+
+    fallbackLeads?.forEach((lead) => {
+      if (!eventLeadIds.has(lead.id) && lead.status) {
+        latestPerLead.set(lead.id, { status: lead.status, created_at: '' })
+      }
+    })
+
+    // Build revenue map for all leads in latestPerLead
+    const leadIds = [...latestPerLead.keys()]
+    const revenueMap = new Map<string, number>()
+    if (leadIds.length > 0) {
+      // Batch in chunks of 100 to avoid URL length limits
+      for (let i = 0; i < leadIds.length; i += 100) {
+        const chunk = leadIds.slice(i, i + 100)
+        const { data: leadsData } = await supabase
+          .from(Tables.leads)
+          .select('id, expected_revenue')
+          .is('deleted_at', null)
+          .in('id', chunk)
+
+        leadsData?.forEach((lead) => {
+          revenueMap.set(lead.id, lead.expected_revenue ?? 0)
+        })
+      }
     }
 
     // Group by status
     const statusMap = new Map<string, { count: number; revenue: number }>()
     latestPerLead.forEach(({ status }, leadId) => {
-      const existing = statusMap.get(status) ?? { count: 0, revenue: 0 }
+      const canonStatus = canonicaliseStatus(status)
+      const existing = statusMap.get(canonStatus) ?? { count: 0, revenue: 0 }
       existing.count++
       existing.revenue += revenueMap.get(leadId) ?? 0
-      statusMap.set(status, existing)
+      statusMap.set(canonStatus, existing)
     })
 
     return Array.from(statusMap.entries())
@@ -1034,4 +1315,330 @@ export async function getSourceTrends(days: number = 30, dateFrom?: string, date
   if (!authResult.authenticated) throw new Error(authResult.error)
   const dateFilter = (dateFrom || dateTo) ? { from: dateFrom, to: dateTo } : undefined
   return getSourceTrendsInternal(days, dateFilter)
+}
+
+// ============ DATA QUALITY STATS (Phase 3) ============
+
+export interface DataQualityResult {
+  totalLeadsInWindow: number
+  leadsWithEvents: number
+  eventCoverage: number           // ratio 0-1
+  expectedIncomeStatusBased: number
+  amountCollectedStatusBased: number
+  totalSignedLeads: number        // actual signed count for trend chart context
+}
+
+const getDataQualityStatsInternal = cache(async (dateFilter?: DateFilter): Promise<DataQualityResult> => {
+  const supabase = await createClient()
+  const signedStatuses = [...PIPELINE_STAGES.signed] as string[]
+
+  // Query 1: total leads in window
+  let leadsQuery = supabase
+    .from(Tables.leads)
+    .select('id, status, refund_amount, commission_rate')
+    .is('deleted_at', null)
+
+  if (dateFilter?.from) leadsQuery = leadsQuery.gte('created_at', dateFilter.from)
+  if (dateFilter?.to) leadsQuery = leadsQuery.lte('created_at', dateFilter.to)
+
+  // Query 2: lead IDs with status_changed events in the window
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let eventsQuery = (supabase as any)
+    .from(Tables.lead_events)
+    .select('lead_id')
+    .eq('event_type', 'status_changed')
+
+  if (dateFilter?.from) eventsQuery = eventsQuery.gte('created_at', dateFilter.from)
+  if (dateFilter?.to) eventsQuery = eventsQuery.lte('created_at', dateFilter.to)
+
+  const [{ data: leadsData }, { data: eventsData }] = await Promise.all([leadsQuery, eventsQuery])
+
+  const totalLeadsInWindow = leadsData?.length || 0
+
+  // Unique lead IDs with events
+  const eventLeadIds = new Set((eventsData as { lead_id: string }[] || []).map(e => e.lead_id))
+  // Only count leads that are actually in the window
+  const leadIdsInWindow = new Set((leadsData || []).map((l) => l.id))
+  const leadsWithEvents = [...eventLeadIds].filter(id => leadIdsInWindow.has(id)).length
+  const eventCoverage = totalLeadsInWindow > 0 ? leadsWithEvents / totalLeadsInWindow : 1
+
+  // Status-based ground truth: revenue from current status
+  let expectedIncomeStatusBased = 0
+  let amountCollectedStatusBased = 0
+  let totalSignedLeads = 0
+
+  leadsData?.forEach((lead) => {
+    if (signedStatuses.includes(lead.status as string)) {
+      totalSignedLeads++
+      const refund = lead.refund_amount ?? 0
+      const rate = (lead.commission_rate ?? 0) / 100
+      expectedIncomeStatusBased += refund * rate
+      if (lead.status === 'payment_completed') {
+        amountCollectedStatusBased += refund * rate
+      }
+    }
+  })
+
+  return {
+    totalLeadsInWindow,
+    leadsWithEvents,
+    eventCoverage,
+    expectedIncomeStatusBased,
+    amountCollectedStatusBased,
+    totalSignedLeads,
+  }
+})
+
+export async function getDataQualityStats(dateFrom?: string, dateTo?: string): Promise<DataQualityResult> {
+  const authResult = await requireAuth()
+  if (!authResult.authenticated) throw new Error(authResult.error)
+  const dateFilter = (dateFrom || dateTo) ? { from: dateFrom, to: dateTo } : undefined
+  return getDataQualityStatsInternal(dateFilter)
+}
+
+// ============ COHORT ANALYSIS (Phase 4) ============
+
+export interface CohortRow {
+  cohortMonth: string  // 'YYYY-MM'
+  total: number
+  follow_up: number
+  warm: number
+  signed: number
+  exit: number
+  future: number
+  conversionRate: number
+}
+
+const getCohortAnalysisInternal = cache(async (): Promise<CohortRow[]> => {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from(Tables.leads)
+    .select('created_at, status')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+
+  if (!data || data.length === 0) return []
+
+  const cohortMap = new Map<string, { total: number; stages: Record<PipelineStage, number> }>()
+
+  data.forEach((lead) => {
+    const month = new Date(lead.created_at!).toISOString().slice(0, 7) // 'YYYY-MM'
+    const existing = cohortMap.get(month) ?? {
+      total: 0,
+      stages: { follow_up: 0, warm: 0, signed: 0, exit: 0, future: 0 },
+    }
+    existing.total++
+    const stage = getPipelineStage(lead.status as string)
+    if (stage) {
+      existing.stages[stage]++
+    }
+    cohortMap.set(month, existing)
+  })
+
+  return Array.from(cohortMap.entries())
+    .map(([cohortMonth, stats]) => ({
+      cohortMonth,
+      total: stats.total,
+      follow_up: stats.stages.follow_up,
+      warm: stats.stages.warm,
+      signed: stats.stages.signed,
+      exit: stats.stages.exit,
+      future: stats.stages.future,
+      conversionRate: stats.total > 0 ? (stats.stages.signed / stats.total) * 100 : 0,
+    }))
+    .sort((a, b) => a.cohortMonth.localeCompare(b.cohortMonth))
+})
+
+export async function getCohortAnalysis(): Promise<CohortRow[]> {
+  const authResult = await requireAuth()
+  if (!authResult.authenticated) throw new Error(authResult.error)
+  return getCohortAnalysisInternal()
+}
+
+// ============ PIPELINE VELOCITY (Phase 4) ============
+
+export interface VelocityMetric {
+  label: string
+  labelHe: string
+  avgDays: number
+  sampleSize: number
+  isReliable: boolean  // sample >= 20
+}
+
+const getPipelineVelocityInternal = cache(async (): Promise<VelocityMetric[]> => {
+  const supabase = await createClient()
+
+  // Fetch all status_changed events ordered by lead and time
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: events } = await (supabase as any)
+    .from(Tables.lead_events)
+    .select('lead_id, old_value, new_value, created_at')
+    .eq('event_type', 'status_changed')
+    .order('created_at', { ascending: true })
+
+  // Also fetch lead creation dates
+  const { data: leads } = await supabase
+    .from(Tables.leads)
+    .select('id, created_at')
+    .is('deleted_at', null)
+
+  const creationMap = new Map<string, string>()
+  leads?.forEach((lead) => {
+    creationMap.set(lead.id, lead.created_at!)
+  })
+
+  type EventRecord = { lead_id: string; old_value: string; new_value: string; created_at: string }
+  const typedEvents = (events as EventRecord[] || [])
+
+  const signedStatuses = [...PIPELINE_STAGES.signed] as string[]
+  const warmStatuses = [...PIPELINE_STAGES.warm] as string[]
+
+  // Track first occurrence per lead for each transition type
+  const firstContact = new Map<string, string>() // lead_id → timestamp of first warm/message_sent event
+  const firstSigned = new Map<string, string>()   // lead_id → timestamp of first signed-stage event
+  const firstPayment = new Map<string, string>()  // lead_id → timestamp of first payment_completed event
+
+  typedEvents.forEach((event) => {
+    const normNew = canonicaliseStatus(normaliseEventValue(event.new_value))
+
+    // First contact: entering warm stage
+    if (warmStatuses.includes(normNew) && !firstContact.has(event.lead_id)) {
+      firstContact.set(event.lead_id, event.created_at)
+    }
+    // First signed
+    if (signedStatuses.includes(normNew) && !firstSigned.has(event.lead_id)) {
+      firstSigned.set(event.lead_id, event.created_at)
+    }
+    // First payment
+    if (normNew === 'payment_completed' && !firstPayment.has(event.lead_id)) {
+      firstPayment.set(event.lead_id, event.created_at)
+    }
+  })
+
+  function calcAvgDays(pairs: [string, string][]): { avgDays: number; sampleSize: number } {
+    if (pairs.length === 0) return { avgDays: 0, sampleSize: 0 }
+    const totalDays = pairs.reduce((sum, [from, to]) => {
+      const diff = (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24)
+      return sum + Math.max(0, diff)
+    }, 0)
+    return { avgDays: totalDays / pairs.length, sampleSize: pairs.length }
+  }
+
+  // 1. Creation → First contact
+  const creationToContact: [string, string][] = []
+  firstContact.forEach((contactDate, leadId) => {
+    const created = creationMap.get(leadId)
+    if (created) creationToContact.push([created, contactDate])
+  })
+
+  // 2. First contact → First signed
+  const contactToSigned: [string, string][] = []
+  firstSigned.forEach((signedDate, leadId) => {
+    const contacted = firstContact.get(leadId)
+    if (contacted) contactToSigned.push([contacted, signedDate])
+  })
+
+  // 3. First signed → First payment
+  const signedToPayment: [string, string][] = []
+  firstPayment.forEach((paymentDate, leadId) => {
+    const signed = firstSigned.get(leadId)
+    if (signed) signedToPayment.push([signed, paymentDate])
+  })
+
+  const v1 = calcAvgDays(creationToContact)
+  const v2 = calcAvgDays(contactToSigned)
+  const v3 = calcAvgDays(signedToPayment)
+
+  return [
+    {
+      label: 'creation_to_contact',
+      labelHe: 'יצירה → קשר ראשון',
+      avgDays: Math.round(v1.avgDays * 10) / 10,
+      sampleSize: v1.sampleSize,
+      isReliable: v1.sampleSize >= 20,
+    },
+    {
+      label: 'contact_to_signed',
+      labelHe: 'קשר → חתימה',
+      avgDays: Math.round(v2.avgDays * 10) / 10,
+      sampleSize: v2.sampleSize,
+      isReliable: v2.sampleSize >= 20,
+    },
+    {
+      label: 'signed_to_payment',
+      labelHe: 'חתימה → גבייה',
+      avgDays: Math.round(v3.avgDays * 10) / 10,
+      sampleSize: v3.sampleSize,
+      isReliable: v3.sampleSize >= 20,
+    },
+  ]
+})
+
+export async function getPipelineVelocity(): Promise<VelocityMetric[]> {
+  const authResult = await requireAuth()
+  if (!authResult.authenticated) throw new Error(authResult.error)
+  return getPipelineVelocityInternal()
+}
+
+// ============ DATA QUALITY HEALTH (Phase 4) ============
+
+export interface DataQualityHealth {
+  eventCoveragePercent: number     // % of leads with at least one status_changed event
+  deprecatedStatusCount: number    // leads still on deprecated statuses
+  revenueVisibilityPercent: number // % of signed-stage leads with refund_amount
+  lastCheckTime: string            // ISO timestamp
+}
+
+const getDataQualityHealthInternal = cache(async (): Promise<DataQualityHealth> => {
+  const supabase = await createClient()
+
+  // All active leads
+  const { data: allLeads } = await supabase
+    .from(Tables.leads)
+    .select('id, status, refund_amount')
+    .is('deleted_at', null)
+
+  // All leads with at least one status_changed event
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: eventLeads } = await (supabase as any)
+    .from(Tables.lead_events)
+    .select('lead_id')
+    .eq('event_type', 'status_changed')
+
+  const totalLeads = allLeads?.length || 0
+  const uniqueEventLeadIds = new Set((eventLeads as { lead_id: string }[] || []).map(e => e.lead_id))
+  const eventCoveragePercent = totalLeads > 0 ? (uniqueEventLeadIds.size / totalLeads) * 100 : 100
+
+  // Deprecated status count
+  const deprecatedStatuses = ['new', 'contacted', 'customer', 'completed', 'paying_customer']
+  const deprecatedStatusCount = (allLeads || []).filter(l => deprecatedStatuses.includes(l.status as string)).length
+
+  // Revenue visibility: signed-stage leads with refund_amount set
+  const signedStatuses = [...PIPELINE_STAGES.signed] as string[]
+  const signedLeads = (allLeads || []).filter(l => signedStatuses.includes(l.status as string))
+  const signedWithRevenue = signedLeads.filter(l => l.refund_amount != null && l.refund_amount > 0)
+  const revenueVisibilityPercent = signedLeads.length > 0
+    ? (signedWithRevenue.length / signedLeads.length) * 100
+    : 100
+
+  return {
+    eventCoveragePercent: Math.round(eventCoveragePercent * 10) / 10,
+    deprecatedStatusCount,
+    revenueVisibilityPercent: Math.round(revenueVisibilityPercent * 10) / 10,
+    lastCheckTime: new Date().toISOString(),
+  }
+})
+
+export async function getDataQualityHealth(): Promise<DataQualityHealth> {
+  const authResult = await requireAuth()
+  if (!authResult.authenticated) throw new Error(authResult.error)
+  return getDataQualityHealthInternal()
+}
+
+// ============ ENHANCED SOURCE PERFORMANCE (Phase 4) ============
+
+export interface EnhancedSourcePerformance extends SourcePerformance {
+  collectionRate: number     // payment_completed / signed per source
+  avgDaysToConvert: number   // avg days from creation to first signed event
 }

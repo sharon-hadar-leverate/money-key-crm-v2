@@ -4,14 +4,36 @@ import Image from 'next/image'
 import { Users, TrendingUp, Wallet, Target, CircleDollarSign, Receipt } from 'lucide-react'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import type { LeadKPIs } from '@/types/leads'
+import type { DataQualityResult } from '@/actions/kpis'
 import goodMoneyIcon from '@/app/assets/good_money_no_bg.png'
 
 interface KPICardsProps {
   kpis: LeadKPIs
+  qualityStats?: DataQualityResult
+  isFiltered?: boolean
 }
 
-export function KPICards({ kpis }: KPICardsProps) {
+function ConfidenceBadge({ coverage }: { coverage: number }) {
+  const pct = Math.round(coverage * 100)
+  return (
+    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
+      pct >= 80 ? 'bg-[#D4F4DD] text-[#00854D]' : 'bg-[#FFF0D6] text-[#D17A00]'
+    }`}>
+      {pct}% כיסוי
+    </span>
+  )
+}
+
+export function KPICards({ kpis, qualityStats, isFiltered }: KPICardsProps) {
   const activeLeads = kpis.followUpLeads + kpis.warmLeads
+  const showConfidence = isFiltered && qualityStats && qualityStats.eventCoverage < 1
+
+  // Check if event-based vs status-based gap is > 10%
+  const showDualRevenue = isFiltered && qualityStats && qualityStats.expectedIncomeStatusBased > 0 &&
+    Math.abs(kpis.expectedIncome - qualityStats.expectedIncomeStatusBased) / qualityStats.expectedIncomeStatusBased > 0.1
+
+  const showDualCollected = isFiltered && qualityStats && qualityStats.amountCollectedStatusBased > 0 &&
+    Math.abs(kpis.amountCollected - qualityStats.amountCollectedStatusBased) / qualityStats.amountCollectedStatusBased > 0.1
 
   return (
     <div className="monday-card p-4">
@@ -66,8 +88,14 @@ export function KPICards({ kpis }: KPICardsProps) {
             <Wallet className="h-6 w-6 text-[#9D5BD2]" strokeWidth={2} />
           </div>
           <div>
-            <p className="text-xs text-[#9B9BAD] font-medium" title="לפי תאריך שינוי סטטוס">הכנסה צפויה</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-[#9B9BAD] font-medium" title="לפי תאריך שינוי סטטוס">הכנסה צפויה</p>
+              {showConfidence && <ConfidenceBadge coverage={qualityStats.eventCoverage} />}
+            </div>
             <p className="text-2xl font-bold text-[#9D5BD2] number-display">{formatCurrency(kpis.expectedIncome)}</p>
+            {showDualRevenue && (
+              <p className="text-[10px] text-[#9B9BAD]">({formatCurrency(qualityStats!.expectedIncomeStatusBased)} לפי סטטוס נוכחי)</p>
+            )}
           </div>
         </div>
 
@@ -79,8 +107,14 @@ export function KPICards({ kpis }: KPICardsProps) {
             <CircleDollarSign className="h-6 w-6 text-[#00854D]" strokeWidth={2} />
           </div>
           <div>
-            <p className="text-xs text-[#9B9BAD] font-medium" title="לפי תאריך שינוי סטטוס">סכום נגבה</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-[#9B9BAD] font-medium" title="לפי תאריך שינוי סטטוס">סכום נגבה</p>
+              {showConfidence && <ConfidenceBadge coverage={qualityStats.eventCoverage} />}
+            </div>
             <p className="text-2xl font-bold text-[#00854D] number-display">{formatCurrency(kpis.amountCollected)}</p>
+            {showDualCollected && (
+              <p className="text-[10px] text-[#9B9BAD]">({formatCurrency(qualityStats!.amountCollectedStatusBased)} לפי סטטוס נוכחי)</p>
+            )}
           </div>
         </div>
 

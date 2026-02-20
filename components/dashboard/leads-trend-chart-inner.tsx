@@ -11,24 +11,30 @@ interface TooltipProps {
   label?: string
 }
 
+const TOOLTIP_LABELS: Record<string, { label: string; color: string }> = {
+  total: { label: 'לידים:', color: '#0073EA' },
+  converted: { label: 'הגיעו לסגירה:', color: '#00854D' },
+  paymentCompleted: { label: 'גבייה הושלמה:', color: '#D17A00' },
+}
+
 const CustomTooltip = ({ active, payload }: TooltipProps) => {
   if (active && payload && payload.length) {
-    // Get the original ISO date from the payload
     const isoDate = payload[0]?.payload?.date
     const dateStr = isoDate ? format(parseISO(isoDate), 'd בMMM', { locale: he }) : ''
     return (
       <div className="bg-white rounded-lg px-4 py-3 shadow-lg border border-[#E6E9EF]">
         <p className="text-[#323338] font-medium text-sm mb-2">{dateStr}</p>
-        {payload.map((p) => (
-          <p key={p.dataKey} className="text-xs">
-            <span className="text-[#676879]">
-              {p.dataKey === 'total' ? 'לידים: ' : 'הומרו: '}
-            </span>
-            <span className={`font-medium ${p.dataKey === 'converted' ? 'text-[#00854D]' : 'text-[#0073EA]'}`}>
-              {p.value}
-            </span>
-          </p>
-        ))}
+        {payload.map((p) => {
+          const config = TOOLTIP_LABELS[p.dataKey]
+          return (
+            <p key={p.dataKey} className="text-xs">
+              <span className="text-[#676879]">{config?.label || p.dataKey} </span>
+              <span className="font-medium" style={{ color: config?.color || '#323338' }}>
+                {p.value}
+              </span>
+            </p>
+          )
+        })}
       </div>
     )
   }
@@ -40,7 +46,6 @@ interface Props {
 }
 
 export default function LeadsTrendChartInner({ data }: Props) {
-  // Format dates for display
   const chartData = data.map(d => ({
     ...d,
     dateLabel: format(parseISO(d.date), 'd/M', { locale: he }),
@@ -57,6 +62,10 @@ export default function LeadsTrendChartInner({ data }: Props) {
           <linearGradient id="colorConverted" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#00854D" stopOpacity={0.3} />
             <stop offset="95%" stopColor="#00854D" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="colorPayment" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#D17A00" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#D17A00" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#E6E9EF" vertical={false} />
@@ -89,6 +98,14 @@ export default function LeadsTrendChartInner({ data }: Props) {
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorConverted)"
+        />
+        <Area
+          type="monotone"
+          dataKey="paymentCompleted"
+          stroke="#D17A00"
+          strokeWidth={2}
+          fillOpacity={1}
+          fill="url(#colorPayment)"
         />
       </AreaChart>
     </ResponsiveContainer>

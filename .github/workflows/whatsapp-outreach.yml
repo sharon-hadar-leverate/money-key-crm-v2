@@ -1,0 +1,38 @@
+name: WhatsApp Outreach
+
+on:
+  schedule:
+    # 07:00 UTC = 10:00 IST (summer), 08:00 UTC = 10:00 IST (winter)
+    # Using 07:00 UTC — adjust to 08:00 UTC after DST ends
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no messages sent)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  outreach:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Run outreach script
+        working-directory: scripts/whatsapp_outreach
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GREEN_API_ID_INSTANCE: ${{ secrets.GREEN_API_ID_INSTANCE }}
+          GREEN_API_TOKEN: ${{ secrets.GREEN_API_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            uv run outreach_runner.py --dry-run
+          else
+            uv run outreach_runner.py
+          fi

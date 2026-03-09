@@ -1,0 +1,13 @@
+[project]
+name = "whatsapp-outreach"
+version = "1.0.0"
+description = "No-answer lead re-engagement via WhatsApp (Green API)"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "supabase>=2.0",
+    "python-dotenv>=1.0",
+]
+
+[tool.uv]
+dev-dependencies = []

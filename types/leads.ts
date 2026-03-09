@@ -29,6 +29,7 @@ export const LEAD_STATUSES = [
   'not_relevant',     // לא רלוונטי
   'closed_elsewhere', // סגר במקום אחר
   'no_refund',        // לקוחות ללא החזר
+  'constant_no_answer', // אין מענה קבוע
   // Future stage
   'future_interest',  // מעוניין בעתיד
 ] as const
@@ -39,7 +40,7 @@ export const PIPELINE_STAGES = {
   follow_up: ['not_contacted', 'no_answer'],
   warm: ['message_sent', 'meeting_set', 'pending_agreement'],
   signed: ['signed', 'under_review', 'report_submitted', 'missing_document', 'waiting_for_payment', 'payment_completed'],
-  exit: ['not_relevant', 'closed_elsewhere', 'no_refund'],
+  exit: ['not_relevant', 'closed_elsewhere', 'no_refund', 'constant_no_answer'],
   future: ['future_interest'],
 } as const
 export type PipelineStage = keyof typeof PIPELINE_STAGES
@@ -181,6 +182,14 @@ export const STATUS_CONFIG: Record<LeadStatus, {
     bgColor: 'bg-[#FFD6D9]',
     borderColor: 'border-transparent',
     cssClass: 'status-no-refund',
+    pipelineStage: 'exit'
+  },
+  constant_no_answer: {
+    label: 'אין מענה קבוע',
+    color: 'text-[#4B4B4B]',
+    bgColor: 'bg-[#E0E0E0]',
+    borderColor: 'border-[#BDBDBD]',
+    cssClass: 'status-constant-no-answer',
     pipelineStage: 'exit'
   },
   // === Future status ===
@@ -333,6 +342,7 @@ export interface TimeSeriesData {
   not_relevant: number
   closed_elsewhere: number
   no_refund: number
+  constant_no_answer: number
   future_interest: number
 }
 

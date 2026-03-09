@@ -554,6 +554,7 @@ const getTimeSeriesTrendsInternal = cache(async (days: number = 30): Promise<Tim
       not_relevant: counts.not_relevant ?? 0,
       closed_elsewhere: counts.closed_elsewhere ?? 0,
       no_refund: counts.no_refund ?? 0,
+      constant_no_answer: counts.constant_no_answer ?? 0,
       future_interest: counts.future_interest ?? 0,
     })
     currentDate.setDate(currentDate.getDate() + 1)

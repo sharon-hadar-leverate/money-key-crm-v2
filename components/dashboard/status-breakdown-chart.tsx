@@ -64,6 +64,7 @@ const EXIT_STATUSES = [
   { status: 'not_relevant', label: 'לא רלוונטי', icon: '❌', isNegative: true },
   { status: 'closed_elsewhere', label: 'סגר במקום אחר', icon: '🏢', isNegative: true },
   { status: 'no_refund', label: 'לקוחות ללא החזר', icon: '💸', isNegative: true },
+  { status: 'constant_no_answer', label: 'אין מענה קבוע', icon: '🔇', isNegative: true },
   { status: 'future_interest', label: 'מעוניין בעתיד', icon: '⏳', isNegative: false },
 ] as const
 

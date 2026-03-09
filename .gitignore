@@ -53,3 +53,12 @@ package-lock.json
 
 # data migration investigation raw data
 docs/data_migration_investigations/*.json
+
+# e2e tests (local only)
+tests/e2e/
+
+# supabase temp
+supabase/.temp/
+
+# python venvs
+scripts/**/.venv/

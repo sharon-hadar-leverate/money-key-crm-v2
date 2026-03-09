@@ -10,6 +10,7 @@ import type { LeadStatus } from '@/types/leads'
 export const HIDDEN_STATUSES: LeadStatus[] = [
   'not_contacted',    // טרם יצרנו קשר - initial state, don't offer as action
   'pending_agreement', // נשלח הסכם התקשרות - intermediate
+  'constant_no_answer', // אין מענה קבוע - set by automation only
 ]
 
 /**
@@ -30,7 +31,7 @@ export function isHiddenStatus(status: LeadStatus): boolean {
 export const STATUS_FLOW: Record<LeadStatus, LeadStatus[]> = {
   // === FOLLOW-UP ===
   'not_contacted': ['message_sent', 'no_answer', 'not_relevant'],
-  'no_answer': ['message_sent', 'not_relevant', 'future_interest'],
+  'no_answer': ['message_sent', 'not_relevant', 'future_interest', 'constant_no_answer'],
 
   // === WARM ===
   'message_sent': ['meeting_set', 'no_answer', 'future_interest'],
@@ -49,6 +50,9 @@ export const STATUS_FLOW: Record<LeadStatus, LeadStatus[]> = {
   'not_relevant': ['not_contacted', 'future_interest'],
   'closed_elsewhere': ['not_contacted', 'future_interest'],
   'no_refund': ['not_contacted', 'future_interest'],
+
+  // === CONSTANT NO ANSWER (terminal exit) ===
+  'constant_no_answer': [],
 
   // === FUTURE ===
   'future_interest': ['message_sent', 'not_contacted'],

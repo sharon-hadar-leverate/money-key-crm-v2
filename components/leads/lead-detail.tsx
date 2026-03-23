@@ -307,6 +307,16 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
     probability: lead.probability?.toString() || '',
     refund_amount: lead.refund_amount?.toString() || '',
     commission_rate: lead.commission_rate?.toString() || '',
+    utm_source: lead.utm_source || '',
+    utm_medium: lead.utm_medium || '',
+    utm_campaign: lead.utm_campaign || '',
+    utm_content: lead.utm_content || '',
+    utm_term: lead.utm_term || '',
+    gclid: lead.gclid || '',
+    landing_page: lead.landing_page || '',
+    referrer: lead.referrer || '',
+    ag_id: lead.ag_id || '',
+    ad_pos: lead.ad_pos || '',
   })
 
   const handleSave = async () => {
@@ -317,6 +327,16 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
       probability: formData.probability ? parseInt(formData.probability) : undefined,
       refund_amount: formData.refund_amount ? parseFloat(formData.refund_amount) : undefined,
       commission_rate: formData.commission_rate ? parseFloat(formData.commission_rate) : undefined,
+      utm_source: formData.utm_source || undefined,
+      utm_medium: formData.utm_medium || undefined,
+      utm_campaign: formData.utm_campaign || undefined,
+      utm_content: formData.utm_content || undefined,
+      utm_term: formData.utm_term || undefined,
+      gclid: formData.gclid || undefined,
+      landing_page: formData.landing_page || undefined,
+      referrer: formData.referrer || undefined,
+      ag_id: formData.ag_id || undefined,
+      ad_pos: formData.ad_pos || undefined,
     })
 
     if (result.success) {
@@ -706,44 +726,63 @@ export function LeadDetail({ lead, events, notes = [], playbooks = [], currentPl
               )
             })()}
 
-            {/* UTM Info */}
-            {(lead.utm_source || lead.utm_campaign) && (
-              <div className="monday-card p-5">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="p-2 rounded-lg bg-[#FFF0D6]">
-                    <Globe className="h-4 w-4 text-[#D17A00]" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-[#323338]">מידע שיווקי (UTM)</h3>
+            {/* Marketing / UTM Info */}
+            <div className="monday-card p-5">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 rounded-lg bg-[#FFF0D6]">
+                  <Globe className="h-4 w-4 text-[#D17A00]" />
                 </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {lead.utm_source && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F5F6F8]">
-                      <span className="text-xs text-[#9B9BAD] w-14">מקור:</span>
-                      <span className="text-sm text-[#323338]">{lead.utm_source}</span>
-                    </div>
-                  )}
-                  {lead.utm_medium && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F5F6F8]">
-                      <span className="text-xs text-[#9B9BAD] w-14">מדיום:</span>
-                      <span className="text-sm text-[#323338]">{lead.utm_medium}</span>
-                    </div>
-                  )}
-                  {lead.utm_campaign && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F5F6F8]">
-                      <span className="text-xs text-[#9B9BAD] w-14">קמפיין:</span>
-                      <span className="text-sm text-[#323338]">{lead.utm_campaign}</span>
-                    </div>
-                  )}
-                  {lead.landing_page && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F5F6F8] sm:col-span-2">
-                      <ExternalLink className="h-4 w-4 text-[#9B9BAD]" />
-                      <span className="text-sm text-[#323338] truncate">{lead.landing_page}</span>
-                    </div>
-                  )}
-                </div>
+                <h3 className="text-sm font-semibold text-[#323338]">מידע שיווקי (UTM)</h3>
               </div>
-            )}
+
+              {isEditing ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([
+                    { key: 'utm_source', label: 'מקור' },
+                    { key: 'utm_medium', label: 'מדיום' },
+                    { key: 'utm_campaign', label: 'קמפיין' },
+                    { key: 'utm_content', label: 'תוכן' },
+                    { key: 'utm_term', label: 'מילת מפתח' },
+                    { key: 'ag_id', label: 'מזהה מודעה' },
+                    { key: 'ad_pos', label: 'מיקום מודעה' },
+                    { key: 'gclid', label: 'מזהה גוגל' },
+                    { key: 'landing_page', label: 'דף נחיתה' },
+                    { key: 'referrer', label: 'מקור הפניה' },
+                  ] as const).map(({ key, label }) => (
+                    <div key={key} className={cn("space-y-1.5", (key === 'landing_page' || key === 'referrer' || key === 'gclid') && "sm:col-span-2")}>
+                      <label className="text-xs text-[#676879]">{label}</label>
+                      <input
+                        value={formData[key]}
+                        onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                        className="w-full h-9 px-3 text-sm rounded-lg bg-white border border-[#E6E9EF] text-[#323338] focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20 transition-all"
+                        dir="ltr"
+                        placeholder={`—`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([
+                    { key: 'utm_source' as const, label: 'מקור' },
+                    { key: 'utm_medium' as const, label: 'מדיום' },
+                    { key: 'utm_campaign' as const, label: 'קמפיין' },
+                    { key: 'utm_content' as const, label: 'תוכן' },
+                    { key: 'utm_term' as const, label: 'מילת מפתח' },
+                    { key: 'ag_id' as const, label: 'מזהה מודעה' },
+                    { key: 'ad_pos' as const, label: 'מיקום מודעה' },
+                    { key: 'gclid' as const, label: 'מזהה גוגל' },
+                    { key: 'landing_page' as const, label: 'דף נחיתה' },
+                    { key: 'referrer' as const, label: 'מקור הפניה' },
+                  ]).map(({ key, label }) => (
+                    <div key={key} className={cn("flex items-center gap-3 p-3 rounded-lg bg-[#F5F6F8]", (key === 'landing_page' || key === 'referrer' || key === 'gclid') && "sm:col-span-2")}>
+                      <span className="text-xs text-[#9B9BAD] shrink-0">{label}:</span>
+                      <span className="text-sm text-[#323338] truncate" dir="ltr">{lead[key] || <span className="text-[#C4C4C4]">—</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {isEditing && (
               <div className="flex gap-3">

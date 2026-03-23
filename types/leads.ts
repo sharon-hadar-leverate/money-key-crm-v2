@@ -273,6 +273,16 @@ export interface UpdateLeadInput {
   commission_rate?: number
   custom_fields?: CustomFields
   is_new?: boolean
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_content?: string
+  utm_term?: string
+  gclid?: string
+  landing_page?: string
+  referrer?: string
+  ag_id?: string
+  ad_pos?: string
 }
 
 // Filter options for list queries

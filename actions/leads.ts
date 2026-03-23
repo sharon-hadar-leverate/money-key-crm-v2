@@ -247,7 +247,9 @@ export async function updateLead(input: UpdateLeadInput): Promise<{
 
     const fieldsToCheck: (keyof UpdateLeadInput)[] = [
       'name', 'email', 'phone', 'first_name', 'last_name',
-      'status', 'expected_revenue', 'probability', 'refund_amount', 'commission_rate', 'is_new'
+      'status', 'expected_revenue', 'probability', 'refund_amount', 'commission_rate', 'is_new',
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
+      'gclid', 'landing_page', 'referrer', 'ag_id', 'ad_pos'
     ]
 
     for (const field of fieldsToCheck) {

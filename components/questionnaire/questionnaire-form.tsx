@@ -181,6 +181,8 @@ export function QuestionnaireForm({
             field={field}
             value={answers[field.slug] ?? null}
             onChange={(value) => handleFieldChange(field.slug, value)}
+            detailValue={(answers[`${field.slug}_detail`] as string) ?? null}
+            onDetailChange={(value) => handleFieldChange(`${field.slug}_detail`, value)}
             disabled={readOnly || isCompleted}
             error={errors[field.slug]}
           />

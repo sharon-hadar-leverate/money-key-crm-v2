@@ -99,6 +99,11 @@ export interface FieldConfig {
   labels?: [string, string]  // [minLabel, maxLabel]
   // Boolean
   checkboxLabel?: string
+  // Detail sub-field (free text below the main field)
+  detailField?: {
+    placeholder?: string
+    label?: string
+  }
   // Any additional config
   [key: string]: unknown
 }

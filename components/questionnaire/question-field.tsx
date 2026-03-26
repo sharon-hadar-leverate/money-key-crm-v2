@@ -9,11 +9,13 @@ interface QuestionFieldProps {
   field: QuestionnaireField
   value: AnswerValue
   onChange: (value: AnswerValue) => void
+  detailValue?: string | null
+  onDetailChange?: (value: string) => void
   disabled?: boolean
   error?: string
 }
 
-export function QuestionField({ field, value, onChange, disabled, error }: QuestionFieldProps) {
+export function QuestionField({ field, value, onChange, detailValue, onDetailChange, disabled, error }: QuestionFieldProps) {
   const config = field.config
 
   return (
@@ -33,6 +35,22 @@ export function QuestionField({ field, value, onChange, disabled, error }: Quest
         onChange={onChange}
         disabled={disabled}
       />
+
+      {config.detailField && onDetailChange && (
+        <textarea
+          value={detailValue ?? ''}
+          onChange={(e) => onDetailChange(e.target.value)}
+          disabled={disabled}
+          placeholder={config.detailField.placeholder ?? 'פירוט...'}
+          rows={2}
+          className={cn(
+            "w-full px-4 py-3 rounded-lg bg-white border border-[#E6E9EF] text-[#323338] text-sm",
+            "focus:outline-none focus:border-[#00A0B0] focus:ring-2 focus:ring-[#00A0B0]/20",
+            "disabled:bg-[#F5F6F8] disabled:cursor-not-allowed",
+            "resize-none transition-all"
+          )}
+        />
+      )}
 
       {error && (
         <p className="text-xs text-[#D83A52]">{error}</p>
